@@ -9,6 +9,16 @@ plugins {
     alias(libs.plugins.sqldelight)
 }
 
+sqldelight {
+    databases {
+        create("NimbusDb") {
+            packageName = "net.tactware.nimbus.db"
+            srcDirs("src/main/sqldb")
+        }
+    }
+}
+
+
 kotlin {
     jvm("desktop")
     

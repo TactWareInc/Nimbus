@@ -1,0 +1,26 @@
+import kotlin.Boolean;
+
+CREATE TABLE IF NOT EXISTS Projects(
+id TEXT PRIMARY KEY NOT NULL,
+name TEXT NOT NULL,
+isAzureDevopsServer INTEGER AS Boolean NOT NULL,
+personalAccessToken TEXT NOT NULL
+);
+
+storeProject:
+INSERT OR REPLACE INTO Projects(id, name, isAzureDevopsServer, personalAccessToken) VALUES (?, ?, ?, ?);
+
+getAllProjects:
+SELECT * FROM Projects;
+
+getProjectByName:
+SELECT * FROM Projects WHERE name = ?;
+
+deleteProject:
+DELETE FROM Projects WHERE id = ?;
+
+updatePat:
+UPDATE Projects SET personalAccessToken = ? WHERE name = ?;
+
+getAllProjectNames:
+SELECT name FROM Projects;
