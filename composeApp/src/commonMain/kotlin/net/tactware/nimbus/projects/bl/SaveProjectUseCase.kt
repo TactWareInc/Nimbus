@@ -20,7 +20,7 @@ class SaveProjectUseCase(private val projectsRepository: ProjectsRepository) {
             Project(
                 id = id ?: Uuid.random().toString(),
                 name = projectName,
-                url = projectUrl,
+                projectUrl = projectUrl,
                 isServerOrService = isDevOpsServer,
                 personalAccessToken = personalAccessToken,
             )

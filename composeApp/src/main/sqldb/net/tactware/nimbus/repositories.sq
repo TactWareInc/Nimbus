@@ -1,0 +1,14 @@
+CREATE TABLE IF NOT EXISTS GitRepos(
+id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+name TEXT NOT NULL,
+url TEXT NOT NULL
+);
+
+storeGitRepo:
+INSERT INTO GitRepos(name, url) VALUES (?, ?);
+
+getAllGitReposForProject:
+SELECT * FROM GitRepos WHERE id IN (SELECT ProjectsToGitRepos.git_repo_id FROM ProjectsToGitRepos WHERE project_id = ?);
+
+getGitRepoById:
+SELECT * FROM GitRepos WHERE id = ?;

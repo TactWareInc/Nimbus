@@ -1,4 +1,5 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import java.beans.SimpleBeanInfo
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -7,6 +8,7 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.kotlinSerialization)
     alias(libs.plugins.sqldelight)
+    alias(libs.plugins.power.assert)
 }
 
 sqldelight {
@@ -30,6 +32,13 @@ kotlin {
     
     sourceSets {
         val desktopMain by getting
+
+        commonTest{
+            dependencies {
+                implementation(libs.kotlin.test)
+                implementation(libs.kotlin.test.junit)
+            }
+        }
         
         commonMain.dependencies {
             implementation(compose.runtime)
@@ -48,6 +57,7 @@ kotlin {
             implementation(libs.koin.coroutines)
             implementation(libs.kotlinx.coroutines.swing)
             implementation(libs.kotlinx.datetime)
+            implementation(libs.kotlinx.serialization.json)
             implementation(libs.adaptive)
             implementation(libs.adaptive.layout)
             implementation(libs.kotlinx.atomicfu)
@@ -94,6 +104,11 @@ tasks.whenTaskAdded {
         enabled = false
     }
 }
+
+powerAssert {
+    functions = listOf("kotlin.test.assertEquals", "kotlin.test.assertTrue", "kotlin.test.assertFalse", "kotlin.assert")
+}
+
 
 //tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().all {
 //    if (name != "kspCommonMainKotlinMetadata") {
