@@ -101,7 +101,8 @@ fun NewProject() {
 
             Button(
                 onClick = { viewModel.onInteraction(NewProjectInteractions.SaveProject) },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                enabled = viewModel.saveAccessible.value
             ) {
                 Text("Save")
             }

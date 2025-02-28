@@ -1,15 +1,20 @@
 package net.tactware.nimbus.projects.ui
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import net.tactware.nimbus.projects.bl.GetAllProjectsFlowUseCase
 import org.koin.core.annotation.Factory
 import org.koin.core.annotation.InjectedParam
 
 @Factory
 class ProjectsViewModel(
     @InjectedParam
-    internal val initialProjects: List<String>
+    internal val initialProjects: List<String>,
+    private val getAllProjectsFlowUseCase: GetAllProjectsFlowUseCase
 ) : ViewModel() {
 
     private val _selectedProject = MutableStateFlow(0)
@@ -26,6 +31,15 @@ class ProjectsViewModel(
         }
     )
     val uiState = _uiState.asStateFlow()
+
+    init {
+        viewModelScope.launch(Dispatchers.Default) {
+            getAllProjectsFlowUseCase.invoke().collect {
+                val names = it.map { p -> p.name }
+                _projects.value = names
+            }
+        }
+    }
 
     internal fun onInteraction(interaction: ProjectsViewInteractions) {
         when (interaction) {
