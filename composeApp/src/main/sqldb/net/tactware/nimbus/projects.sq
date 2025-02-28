@@ -3,12 +3,14 @@ import kotlin.Boolean;
 CREATE TABLE IF NOT EXISTS Projects(
 id TEXT PRIMARY KEY NOT NULL,
 name TEXT NOT NULL,
+projectUrl TEXT NOT NULL,
 isAzureDevopsServer INTEGER AS Boolean NOT NULL,
-personalAccessToken TEXT NOT NULL
+personalAccessToken TEXT NOT NULL,
+projectProcessType TEXT NOT NULL
 );
 
 storeProject:
-INSERT OR REPLACE INTO Projects(id, name, isAzureDevopsServer, personalAccessToken) VALUES (?, ?, ?, ?);
+INSERT OR REPLACE INTO Projects(id, name, projectUrl, isAzureDevopsServer, personalAccessToken, projectProcessType) VALUES (?,?, ?, ?, ?, ?);
 
 getAllProjects:
 SELECT * FROM Projects;

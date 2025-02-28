@@ -3,14 +3,15 @@ package net.tactware.nimbus.appwide.ui.main
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import net.tactware.nimbus.projects.bl.GetAllProjectNameUseCase
+import net.tactware.nimbus.projects.bl.GetAllProjectsFlowUseCase
 import org.koin.core.annotation.Factory
 
 @Factory
-class MainViewModel : ViewModel() {
+class MainViewModel(getAllProjectNameUseCase: GetAllProjectNameUseCase) : ViewModel() {
 
     private val _uiState = MutableStateFlow<UiState>(UiState.Loading)
 
@@ -18,8 +19,7 @@ class MainViewModel : ViewModel() {
 
     init {
         viewModelScope.launch(Dispatchers.Default) {
-            delay(2000)
-            _uiState.value = UiState.LoadedProjects(listOf())
+            _uiState.value = UiState.LoadedProjects(getAllProjectNameUseCase.invoke())
         }
     }
 

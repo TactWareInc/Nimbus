@@ -4,12 +4,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import net.tactware.nimbus.projects.ui.addnew.NewProject
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -20,13 +22,13 @@ fun ShowProjects(projects: List<String>) {
     Column(Modifier.fillMaxSize()) {
         ScrollableTabRow(projectsViewModel.selectedProject.collectAsState().value, Modifier.fillMaxWidth()) {
             projectsViewModel.projectsFlow.collectAsState().value.forEachIndexed { index, project ->
-                Tab(selected = index == 0, onClick = {
+                Tab(selected = index == 0, modifier = Modifier.padding(8.dp), onClick = {
                     projectsViewModel.onInteraction(ProjectsViewInteractions.SelectProject(project, index))
                 }) {
                     Text(project)
                 }
             }
-            Tab(selected = false, onClick = { projectsViewModel.onInteraction(ProjectsViewInteractions.AddProject) }) {
+            Tab(selected = false, modifier = Modifier.padding(8.dp), onClick = { projectsViewModel.onInteraction(ProjectsViewInteractions.AddProject) }) {
                 Text("Add Project")
             }
         }

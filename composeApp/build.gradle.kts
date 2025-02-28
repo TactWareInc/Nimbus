@@ -20,6 +20,12 @@ sqldelight {
 
 
 kotlin {
+    compilerOptions {
+        optIn.add("kotlin.uuid.ExperimentalUuidApi")
+        optIn.add("androidx.compose.material3.ExperimentalMaterial3Api")
+        optIn.add("kotlinx.coroutines.ExperimentalCoroutinesApi")
+    }
+
     jvm("desktop")
     
     sourceSets {
@@ -46,10 +52,19 @@ kotlin {
             implementation(libs.adaptive.layout)
             implementation(libs.kotlinx.atomicfu)
             implementation(libs.kgit)
+            implementation(libs.ktor.client.core)
+            implementation(libs.ktor.client.serialization)
+            implementation(libs.ktor.client.apache)
+            implementation(libs.ktor.client.logging.jvm)
+            implementation(libs.ktor.serialization.kotlinx.json.jvm)
+            implementation(libs.ktor.server.auth)
+            implementation(libs.ktor.client.content.negotiation.jvm)
+            implementation(libs.ktor.client.auth)
         }
         desktopMain.dependencies {
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutines.swing)
+            implementation(libs.sqlDelight.jvm)
         }
     }
 }
