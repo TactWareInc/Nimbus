@@ -18,6 +18,9 @@ SELECT * FROM Projects;
 getProjectByName:
 SELECT * FROM Projects WHERE name = ?;
 
+getProjectById:
+SELECT * FROM Projects WHERE id = ?;
+
 deleteProject:
 DELETE FROM Projects WHERE id = ?;
 
@@ -25,4 +28,4 @@ updatePat:
 UPDATE Projects SET personalAccessToken = ? WHERE name = ?;
 
 getAllProjectNames:
-SELECT name FROM Projects;
+SELECT name, id FROM Projects;

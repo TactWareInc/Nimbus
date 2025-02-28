@@ -12,12 +12,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import net.tactware.nimbus.projects.dal.entities.ProjectIdentifier
 import net.tactware.nimbus.projects.ui.addnew.NewProject
+import net.tactware.nimbus.projects.ui.specific.SpecificProjectUi
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
 @Composable
-fun ShowProjects(projects: List<String>) {
+fun ShowProjects(projects: List<ProjectIdentifier>) {
     val projectsViewModel = koinViewModel<ProjectsViewModel> { parametersOf(projects) }
     Column(Modifier.fillMaxSize()) {
         ScrollableTabRow(projectsViewModel.selectedProject.collectAsState().value, Modifier.fillMaxWidth()) {
@@ -25,7 +27,7 @@ fun ShowProjects(projects: List<String>) {
                 Tab(selected = index == 0, modifier = Modifier.padding(8.dp), onClick = {
                     projectsViewModel.onInteraction(ProjectsViewInteractions.SelectProject(project, index))
                 }) {
-                    Text(project)
+                    Text(project.name)
                 }
             }
             Tab(selected = false, modifier = Modifier.padding(8.dp), onClick = { projectsViewModel.onInteraction(ProjectsViewInteractions.AddProject) }) {
@@ -36,7 +38,7 @@ fun ShowProjects(projects: List<String>) {
             val state = projectsViewModel.uiState.collectAsState().value
             when (state) {
                 is ProjectsViewModel.UiState.SpecificProject -> {
-                    Text(state.project)
+                    SpecificProjectUi(state.project)
                 }
 
                 ProjectsViewModel.UiState.AddProject -> {

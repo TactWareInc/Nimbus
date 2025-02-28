@@ -5,7 +5,6 @@ import app.cash.sqldelight.coroutines.mapToList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.all
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import net.tactware.nimbus.Projects
@@ -13,6 +12,7 @@ import net.tactware.nimbus.appwide.dal.IDatabaseProvider
 import net.tactware.nimbus.db.NimbusDb
 import net.tactware.nimbus.projects.dal.entities.DevOpsServerOrService
 import net.tactware.nimbus.projects.dal.entities.Project
+import net.tactware.nimbus.projects.dal.entities.ProjectIdentifier
 import org.koin.core.annotation.Single
 import kotlin.uuid.Uuid
 
@@ -28,7 +28,7 @@ class ProjectsRepository(provider: IDatabaseProvider<NimbusDb>) {
     private val mapper: (Projects) -> Project = {
         Project(
             id = it.id,
-            url = it.projectUrl,
+            projectUrl = it.projectUrl,
             name = it.name,
             isServerOrService = if (it.isAzureDevopsServer) DevOpsServerOrService.SERVER else DevOpsServerOrService.SERVICE,
             personalAccessToken = it.personalAccessToken
@@ -39,7 +39,7 @@ class ProjectsRepository(provider: IDatabaseProvider<NimbusDb>) {
         queries.storeProject(
             id = project.id,
             name = project.name,
-            projectUrl = project.url,
+            projectUrl = project.projectUrl,
             isAzureDevopsServer = project.isServerOrService == DevOpsServerOrService.SERVER,
             personalAccessToken = project.personalAccessToken,
             projectProcessType = "AGILE"
@@ -52,8 +52,17 @@ class ProjectsRepository(provider: IDatabaseProvider<NimbusDb>) {
 
     fun getAllProjectsFlow() = projectDataFlow
 
-    suspend fun getAllProjectsNames(): List<String> {
-        return queries.getAllProjectNames().executeAsList()
+    suspend fun getAllProjectsNames(): List<ProjectIdentifier> {
+        return queries.getAllProjectNames().executeAsList().map {
+            ProjectIdentifier(Uuid.parse(it.id), it.name)
+
+        }
+    }
+
+    suspend fun getProject(id: Uuid): Project? {
+        return queries.getProjectById(id.toString()).executeAsOneOrNull()?.let {
+            mapper.invoke(it)
+        }
     }
 
     suspend fun getProjectByName(name: String): Project? {

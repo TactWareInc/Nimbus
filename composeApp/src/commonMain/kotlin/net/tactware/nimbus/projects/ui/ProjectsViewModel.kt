@@ -7,13 +7,15 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import net.tactware.nimbus.projects.bl.GetAllProjectsFlowUseCase
+import net.tactware.nimbus.projects.dal.entities.ProjectIdentifier
 import org.koin.core.annotation.Factory
 import org.koin.core.annotation.InjectedParam
+import kotlin.uuid.Uuid
 
 @Factory
 class ProjectsViewModel(
     @InjectedParam
-    internal val initialProjects: List<String>,
+    internal val initialProjects: List<ProjectIdentifier>,
     private val getAllProjectsFlowUseCase: GetAllProjectsFlowUseCase
 ) : ViewModel() {
 
@@ -35,7 +37,7 @@ class ProjectsViewModel(
     init {
         viewModelScope.launch(Dispatchers.Default) {
             getAllProjectsFlowUseCase.invoke().collect {
-                val names = it.map { p -> p.name }
+                val names = it.map { p -> ProjectIdentifier(Uuid.parse(p.id), p.name) }
                 _projects.value = names
             }
         }
@@ -57,7 +59,7 @@ class ProjectsViewModel(
     }
 
     sealed class UiState {
-        data class SpecificProject(val project: String) : UiState()
+        data class SpecificProject(val project: ProjectIdentifier) : UiState()
 
         data object AddProject : UiState()
     }

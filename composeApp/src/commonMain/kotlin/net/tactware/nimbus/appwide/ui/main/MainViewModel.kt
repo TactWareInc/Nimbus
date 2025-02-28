@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import net.tactware.nimbus.projects.bl.GetAllProjectNameUseCase
-import net.tactware.nimbus.projects.bl.GetAllProjectsFlowUseCase
+import net.tactware.nimbus.projects.dal.entities.ProjectIdentifier
 import org.koin.core.annotation.Factory
 
 @Factory
@@ -34,7 +34,7 @@ class MainViewModel(getAllProjectNameUseCase: GetAllProjectNameUseCase) : ViewMo
     sealed class UiState {
         data object Loading : UiState()
 
-        data class LoadedProjects(val projects: List<String>) : UiState()
+        data class LoadedProjects(val projects: List<ProjectIdentifier>) : UiState()
 
         data object Error : UiState()
     }
