@@ -1,6 +1,6 @@
 import kotlin.Boolean;
 
-CREATE TABLE IF NOT EXISTS Projects(
+CREATE TABLE Projects(
 id TEXT PRIMARY KEY NOT NULL,
 name TEXT NOT NULL,
 projectUrl TEXT NOT NULL,
@@ -26,6 +26,9 @@ DELETE FROM Projects WHERE id = ?;
 
 updatePat:
 UPDATE Projects SET personalAccessToken = ? WHERE name = ?;
+
+checkIfProjectExistsByURL:
+SELECT EXISTS(SELECT 1 FROM Projects WHERE projectUrl = ?) AS result;
 
 getAllProjectNames:
 SELECT name, id FROM Projects;

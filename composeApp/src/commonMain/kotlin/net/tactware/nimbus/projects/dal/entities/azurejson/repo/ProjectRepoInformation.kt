@@ -1,4 +1,4 @@
-package net.tactware.nimbus.projects.dal.entities.azurejson
+package net.tactware.nimbus.projects.dal.entities.azurejson.repo
 
 import kotlinx.serialization.Serializable
 

@@ -105,5 +105,4 @@ class AzureDevOpsClient(
         val url = "${project.projectUrl}/_apis/build/definitions?api-version=$API_VERSION"
         return get(url)
     }
-
 }
