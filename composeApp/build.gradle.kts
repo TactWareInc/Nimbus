@@ -16,6 +16,10 @@ sqldelight {
         create("NimbusDb") {
             packageName = "net.tactware.nimbus.db"
             srcDirs("src/main/sqldb")
+//            schemaOutputDirectory = file("net.tactware.nimbus")
+//            migrationOutputDirectory = file("net.tactware.nimbus")
+//            verifyMigrations = true
+//            deriveSchemaFromMigrations = true
         }
     }
 }
@@ -29,17 +33,17 @@ kotlin {
     }
 
     jvm("desktop")
-    
+
     sourceSets {
         val desktopMain by getting
 
-        commonTest{
+        commonTest {
             dependencies {
                 implementation(libs.kotlin.test)
                 implementation(libs.kotlin.test.junit)
             }
         }
-        
+
         commonMain.dependencies {
             implementation(compose.runtime)
             implementation(compose.foundation)

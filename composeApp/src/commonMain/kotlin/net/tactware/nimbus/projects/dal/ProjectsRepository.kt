@@ -70,4 +70,8 @@ class ProjectsRepository(provider: IDatabaseProvider<NimbusDb>) {
             mapper.invoke(it)
         }
     }
+
+    suspend fun doesProjectUrlExist(projectUrl: String): Boolean {
+        return queries.checkIfProjectExistsByURL(projectUrl).executeAsOne()
+    }
 }

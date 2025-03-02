@@ -1,14 +1,21 @@
-CREATE TABLE IF NOT EXISTS GitRepos(
+CREATE TABLE GitRepos(
 id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
 name TEXT NOT NULL,
 url TEXT NOT NULL
 );
 
 storeGitRepo:
-INSERT INTO GitRepos(name, url) VALUES (?, ?);
+INSERT OR REPLACE INTO GitRepos(name, url) VALUES (?, ?);
+
+checkIfProjectExistsByURL:
+SELECT EXISTS(SELECT 1 FROM GitRepos WHERE url = ?) AS result;
+
 
 getAllGitReposForProject:
 SELECT * FROM GitRepos WHERE id IN (SELECT ProjectsToGitRepos.git_repo_id FROM ProjectsToGitRepos WHERE project_id = ?);
 
 getGitRepoById:
 SELECT * FROM GitRepos WHERE id = ?;
+
+lastRowInserted:
+SELECT last_insert_rowid();
