@@ -1,0 +1,86 @@
+import kotlin.Boolean;
+
+CREATE TABLE WorkItems(
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    workItemId INTEGER NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT ,
+    state TEXT NOT NULL,
+    assignedTo TEXT ,
+    type TEXT,
+    project TEXT NOT NULL
+);
+
+-- Create FTS virtual table for full-text search
+CREATE VIRTUAL TABLE WorkItemsFts USING fts4(
+    title TEXT,
+    description TEXT,
+    state TEXT,
+    assignedTo TEXT,
+    type TEXT,
+    content='WorkItems',
+    tokenize = 'unicode61'
+    );
+
+-- Triggers to keep the FTS table in sync with the main table
+CREATE TRIGGER work_items_ai AFTER INSERT ON WorkItems BEGIN
+    INSERT INTO WorkItemsFts(rowid, title, description, state, assignedTo, type)
+    VALUES (new.id, new.title, new.description, new.state, new.assignedTo, new.type);
+END;
+
+CREATE TRIGGER work_items_ad AFTER DELETE ON WorkItems BEGIN
+    INSERT INTO WorkItemsFts(WorkItemsFts, rowid, title, description, state, assignedTo, type)
+    VALUES ('delete', old.id, old.title, old.description, old.state, old.assignedTo, old.type);
+END;
+
+CREATE TRIGGER work_items_au AFTER UPDATE ON WorkItems BEGIN
+    INSERT INTO WorkItemsFts(WorkItemsFts, rowid, title, description, state, assignedTo, type)
+    VALUES ('delete', old.id, old.title, old.description, old.state, old.assignedTo, old.type);
+    INSERT INTO WorkItemsFts(rowid, title, description, state, assignedTo, type)
+    VALUES (new.id, new.title, new.description, new.state, new.assignedTo, new.type);
+END;
+
+-- CRUD operations
+storeWorkItem:
+INSERT OR REPLACE INTO WorkItems(id, workItemId, title, description, state, assignedTo, type, project)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+
+getAllWorkItems:
+SELECT * FROM WorkItems;
+
+getWorkItemById:
+SELECT * FROM WorkItems WHERE id = ?;
+
+deleteWorkItem:
+DELETE FROM WorkItems WHERE id = ?;
+
+-- Search operations
+searchWorkItems:
+SELECT WorkItems.*
+FROM WorkItemsFts
+JOIN WorkItems ON WorkItems.id = WorkItemsFts.rowid
+WHERE WorkItemsFts MATCH ?;
+
+searchWorkItemsByTitle:
+SELECT WorkItems.*
+FROM WorkItemsFts
+JOIN WorkItems ON WorkItems.id = WorkItemsFts.rowid
+WHERE WorkItemsFts.title MATCH ?;
+
+searchWorkItemsByState:
+SELECT WorkItems.*
+FROM WorkItemsFts
+JOIN WorkItems ON WorkItems.id = WorkItemsFts.rowid
+WHERE WorkItemsFts.state MATCH ?;
+
+searchWorkItemsByAssignee:
+SELECT WorkItems.*
+FROM WorkItemsFts
+JOIN WorkItems ON WorkItems.id = WorkItemsFts.rowid
+WHERE WorkItemsFts.assignedTo MATCH ?;
+
+searchWorkItemsByType:
+SELECT WorkItems.*
+FROM WorkItemsFts
+JOIN WorkItems ON WorkItems.id = WorkItemsFts.rowid
+WHERE WorkItemsFts.type MATCH ?;
