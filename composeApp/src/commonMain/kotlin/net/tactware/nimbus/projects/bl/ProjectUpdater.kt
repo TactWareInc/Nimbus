@@ -30,9 +30,7 @@ class ProjectUpdater(
         } ?: emptyList()
 
         for (repoInfo in repoInfos) {
-            println(repoInfo)
                 gitReposRepository.storeRepo(repoInfo.webUrl, repoInfo.name, project.id)
-
         }
     }
 }

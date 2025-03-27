@@ -32,6 +32,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
@@ -61,9 +62,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
+import net.tactware.nimbus.appwide.NotificationService
 import net.tactware.nimbus.appwide.ui.main.MainViewModel
 import net.tactware.nimbus.appwide.ui.theme.AppTheme
 import net.tactware.nimbus.appwide.ui.theme.spacing
+import net.tactware.nimbus.appwide.ui.NotificationIcon
 import net.tactware.nimbus.projects.dal.entities.ProjectIdentifier
 import net.tactware.nimbus.projects.ui.ShowProjects
 import org.koin.compose.viewmodel.koinViewModel
@@ -95,6 +98,26 @@ fun App() {
                 delay(200)
             }
             showNavItemTitles = isNavExpanded
+        }
+
+        // Add some test notifications
+        LaunchedEffect(Unit) {
+            // Clear any existing notifications first
+            NotificationService.clearAllNotifications()
+
+            // Add test notifications
+            NotificationService.addNotification(
+                "Welcome to Nimbus",
+                "Thank you for using Nimbus. This is a test notification."
+            )
+            NotificationService.addNotification(
+                "New Project Created",
+                "Project 'Test Project' has been created successfully."
+            )
+            NotificationService.addNotification(
+                "System Update",
+                "A new system update is available. Please restart the application to apply the update."
+            )
         }
 
         // Navigation items
@@ -262,6 +285,9 @@ fun App() {
                                     }
                                 }
 
+                                // Notification icon
+                                NotificationIcon()
+
                                 // User profile
                                 Box(
                                     modifier = Modifier
@@ -281,9 +307,21 @@ fun App() {
                         }
 
                         // Content based on selected nav item
+                        // Track if we're navigating to Projects to add a new project
+                        var showAddProject by remember { mutableStateOf(false) }
+
                         when (selectedNavItem) {
-                            0 -> DashboardContent(state)
-                            1 -> ProjectsContent(state)
+                            0 -> DashboardContent(state, onNavigateToProjects = { 
+                                showAddProject = true
+                                selectedNavItem = 1 
+                            })
+                            1 -> {
+                                ProjectsContent(state, showAddProject = showAddProject)
+                                // Reset after navigation
+                                if (showAddProject) {
+                                    showAddProject = false
+                                }
+                            }
                             2 -> WorkItemsContent()
                             3 -> SettingsContent()
                         }
@@ -334,7 +372,7 @@ fun WorkItemsContent() {
 
 
 @Composable
-fun DashboardContent(state: MainViewModel.UiState) {
+fun DashboardContent(state: MainViewModel.UiState, onNavigateToProjects: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
@@ -487,6 +525,9 @@ fun DashboardContent(state: MainViewModel.UiState) {
                     items(state.projects) { project ->
                         ProjectCard(project)
                     }
+                    item {
+                        AddProjectCard(onAddProject = onNavigateToProjects)
+                    }
                 }
             }
 
@@ -565,7 +606,7 @@ fun ProjectCard(project: ProjectIdentifier) {
 }
 
 @Composable
-fun ProjectsContent(state: MainViewModel.UiState) {
+fun ProjectsContent(state: MainViewModel.UiState, showAddProject: Boolean = false) {
     when (state) {
         MainViewModel.UiState.Error -> {
             Column(
@@ -580,7 +621,7 @@ fun ProjectsContent(state: MainViewModel.UiState) {
         }
 
         is MainViewModel.UiState.LoadedProjects -> {
-            ShowProjects(projects = state.projects)
+            ShowProjects(projects = state.projects, showAddProject = showAddProject)
         }
 
         MainViewModel.UiState.Loading -> {
@@ -590,6 +631,36 @@ fun ProjectsContent(state: MainViewModel.UiState) {
             ) {
                 CircularProgressIndicator()
             }
+        }
+    }
+}
+
+@Composable
+fun AddProjectCard(onAddProject: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth().height(160.dp).clickable { onAddProject() },
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(MaterialTheme.spacing.medium),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                Icons.Default.Build,
+                contentDescription = "Add Project",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(48.dp)
+            )
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+            Text(
+                "Add New Project",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

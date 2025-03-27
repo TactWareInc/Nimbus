@@ -39,6 +39,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 import net.tactware.nimbus.projects.dal.entities.ProjectIdentifier
+import net.tactware.nimbus.projects.dal.entities.WorkItem
 import net.tactware.nimbus.projects.ui.ExposedSearchMenu
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -158,6 +159,9 @@ fun RepositoriesTab(viewModel: SpecificProjectViewModel) {
 
 @Composable
 fun WorkItemsTab(projectIdentifier: ProjectIdentifier) {
+    val viewModel = koinViewModel<WorkItemsViewModel> { parametersOf(projectIdentifier) }
+    val workItems = viewModel.workItems.collectAsState().value
+
     Column(modifier = Modifier.padding(8.dp)) {
         // Search field for work items
         var searchText by remember { mutableStateOf("") }
@@ -168,7 +172,7 @@ fun WorkItemsTab(projectIdentifier: ProjectIdentifier) {
             modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
         )
 
-        // Sample work items (placeholder)
+        // Work items from Azure DevOps
         LazyColumn {
             // Header
             item {
@@ -200,48 +204,42 @@ fun WorkItemsTab(projectIdentifier: ProjectIdentifier) {
                 Divider()
             }
 
-            // Sample work items
-            items(sampleWorkItems) { workItem ->
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+            // Display work items from ViewModel
+            if (workItems.isEmpty()) {
+                item {
                     Text(
-                        workItem.id.toString(),
-                        modifier = Modifier.weight(0.1f)
-                    )
-                    Text(
-                        workItem.title,
-                        modifier = Modifier.weight(0.5f)
-                    )
-                    Text(
-                        workItem.state,
-                        modifier = Modifier.weight(0.2f)
-                    )
-                    Text(
-                        workItem.assignedTo,
-                        modifier = Modifier.weight(0.2f)
+                        "No work items found",
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.fillMaxWidth().padding(16.dp)
                     )
                 }
-                Divider()
+            } else {
+                items(workItems) { workItem ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            workItem.id.toString(),
+                            modifier = Modifier.weight(0.1f)
+                        )
+                        Text(
+                            workItem.title,
+                            modifier = Modifier.weight(0.5f)
+                        )
+                        Text(
+                            workItem.state,
+                            modifier = Modifier.weight(0.2f)
+                        )
+                        Text(
+                            workItem.assignedTo,
+                            modifier = Modifier.weight(0.2f)
+                        )
+                    }
+                    Divider()
+                }
             }
         }
     }
 }
 
-// Sample work item data class
-data class WorkItem(
-    val id: Int,
-    val title: String,
-    val state: String,
-    val assignedTo: String
-)
-
-// Sample work items for UI demonstration
-val sampleWorkItems = listOf(
-    WorkItem(1, "Implement login functionality", "Active", "John Doe"),
-    WorkItem(2, "Fix navigation bug", "Resolved", "Jane Smith"),
-    WorkItem(3, "Add unit tests for API client", "New", "Unassigned"),
-    WorkItem(4, "Update documentation", "Active", "John Doe"),
-    WorkItem(5, "Refactor database access layer", "New", "Jane Smith")
-)
