@@ -16,10 +16,10 @@ sqldelight {
         create("NimbusDb") {
             packageName = "net.tactware.nimbus.db"
             srcDirs("src/main/sqldb")
-//            schemaOutputDirectory = file("net.tactware.nimbus")
-//            migrationOutputDirectory = file("net.tactware.nimbus")
-//            verifyMigrations = true
-//            deriveSchemaFromMigrations = true
+            schemaOutputDirectory = file("src/main/sqldb/schemas")
+            migrationOutputDirectory = file("src/main/sqldb/migrations")
+            verifyMigrations = true
+            deriveSchemaFromMigrations = true
         }
     }
 }
@@ -30,6 +30,7 @@ kotlin {
         optIn.add("kotlin.uuid.ExperimentalUuidApi")
         optIn.add("androidx.compose.material3.ExperimentalMaterial3Api")
         optIn.add("kotlinx.coroutines.ExperimentalCoroutinesApi")
+        optIn.add("app.cash.paging.ExperimentalPagingApi")
     }
 
     jvm("desktop")
@@ -74,6 +75,9 @@ kotlin {
             implementation(libs.ktor.server.auth)
             implementation(libs.ktor.client.content.negotiation.jvm)
             implementation(libs.ktor.client.auth)
+
+            // Paging library
+            implementation(libs.paging.compose.common)
         }
         desktopMain.dependencies {
             implementation(compose.desktop.currentOs)

@@ -37,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import app.cash.paging.compose.collectAsLazyPagingItems
 
 import net.tactware.nimbus.projects.dal.entities.ProjectIdentifier
 import net.tactware.nimbus.projects.dal.entities.WorkItem
@@ -160,86 +161,128 @@ fun RepositoriesTab(viewModel: SpecificProjectViewModel) {
 @Composable
 fun WorkItemsTab(projectIdentifier: ProjectIdentifier) {
     val viewModel = koinViewModel<WorkItemsViewModel> { parametersOf(projectIdentifier) }
-    val workItems = viewModel.workItems.collectAsState().value
+
+    // Collect states from ViewModel
+    val isSearchMode = viewModel.isSearchMode.collectAsState().value
+    val searchResults = viewModel.searchResults.collectAsState().value
+    val workItemsPaging = viewModel.workItemsPaging.collectAsState().value.collectAsLazyPagingItems()
+    val isLoading = viewModel.isLoading.collectAsState().value
 
     Column(modifier = Modifier.padding(8.dp)) {
         // Search field for work items
-        var searchText by remember { mutableStateOf("") }
+        val searchText = viewModel.searchQuery.collectAsState().value
         TextField(
             value = searchText,
-            onValueChange = { searchText = it },
+            onValueChange = { 
+                viewModel.updateSearchQuery(it)
+            },
             label = { Text("Search Work Items") },
             modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
         )
 
-        // Work items from Azure DevOps
-        LazyColumn {
-            // Header
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        "ID",
-                        style = MaterialTheme.typography.titleSmall,
-                        modifier = Modifier.weight(0.1f)
-                    )
-                    Text(
-                        "Title",
-                        style = MaterialTheme.typography.titleSmall,
-                        modifier = Modifier.weight(0.5f)
-                    )
-                    Text(
-                        "State",
-                        style = MaterialTheme.typography.titleSmall,
-                        modifier = Modifier.weight(0.2f)
-                    )
-                    Text(
-                        "Assigned To",
-                        style = MaterialTheme.typography.titleSmall,
-                        modifier = Modifier.weight(0.2f)
-                    )
-                }
-                Divider()
-            }
+        // Loading indicator
+        if (isLoading) {
+            Text(
+                "Loading...",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(8.dp)
+            )
+        }
 
-            // Display work items from ViewModel
-            if (workItems.isEmpty()) {
-                item {
-                    Text(
-                        "No work items found",
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier.fillMaxWidth().padding(16.dp)
-                    )
-                }
-            } else {
-                items(workItems) { workItem ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            workItem.id.toString(),
-                            modifier = Modifier.weight(0.1f)
-                        )
-                        Text(
-                            workItem.title,
-                            modifier = Modifier.weight(0.5f)
-                        )
-                        Text(
-                            workItem.state,
-                            modifier = Modifier.weight(0.2f)
-                        )
-                        Text(
-                            workItem.assignedTo,
-                            modifier = Modifier.weight(0.2f)
-                        )
-                    }
+        // Work items header
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "ID",
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.weight(0.1f)
+            )
+            Text(
+                "Title",
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.weight(0.5f)
+            )
+            Text(
+                "State",
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.weight(0.2f)
+            )
+            Text(
+                "Assigned To",
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.weight(0.2f)
+            )
+        }
+        Divider()
+
+        // Display work items based on mode (search or paging)
+        if (isSearchMode) {
+            // Display search results
+            LazyColumn(
+                modifier = Modifier.weight(1f)
+            ) {
+                items(searchResults) { workItem ->
+                    WorkItemRow(workItem)
                     Divider()
+                }
+            }
+        } else {
+            // Display paged work items
+            LazyColumn(
+                modifier = Modifier.weight(1f)
+            ) {
+                items(workItemsPaging.itemCount) { index ->
+                    val workItem = workItemsPaging[index]
+                    if (workItem != null) {
+                        WorkItemRow(workItem)
+                        Divider()
+                    }
                 }
             }
         }
     }
 }
 
+/**
+ * Displays a single work item row.
+ */
+@Composable
+private fun WorkItemRow(workItem: WorkItem) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            workItem.id.toString(),
+            modifier = Modifier.weight(0.1f)
+        )
+        Text(
+            workItem.title,
+            modifier = Modifier.weight(0.5f)
+        )
+        Text(
+            workItem.state,
+            modifier = Modifier.weight(0.2f)
+        )
+        Text(
+            workItem.assignedTo ?: "Unassigned",
+            modifier = Modifier.weight(0.2f)
+        )
+    }
+}
+
+/**
+ * NOTE: This is a placeholder for how to implement the WorkItemsTab using the Cash App's Paging library.
+ * To implement this properly, you would need to:
+ * 1. Add the app.cash.paging:paging-compose-common dependency
+ * 2. Update WorkItemsViewModel to expose a Flow<PagingData<WorkItem>>
+ * 3. Implement a PagingSource in WorkItemsRepository
+ * 
+ * The Compose Paging library provides built-in support for pagination, including:
+ * - Automatic loading of pages as the user scrolls
+ * - Built-in loading and error states
+ * - Efficient recycling of items
+ * - Support for placeholders
+ */

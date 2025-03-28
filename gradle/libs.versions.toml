@@ -5,6 +5,7 @@ junit = "4.13.2"
 kotlin = "2.1.0"
 kotlinx-coroutines = "1.10.1"
 kgit = "1.1.0"
+cash-paging = "3.3.0-alpha02-0.5.1"
 
 koin = "4.0.1"
 koin-annotation = "2.0.0-Beta3"
@@ -55,6 +56,9 @@ ktor-serialization-kotlinx-json-jvm = { module = "io.ktor:ktor-serialization-kot
 ktor-server-auth = { module = "io.ktor:ktor-server-auth", version.ref = "ktor" }
 ktor-client-content-negotiation-jvm = { module = "io.ktor:ktor-client-content-negotiation-jvm", version.ref = "ktor" }
 ktor-client-auth = { module = "io.ktor:ktor-client-auth", version.ref = "ktor" }
+
+# Paging library components
+paging-compose-common = { module = "app.cash.paging:paging-compose-common", version.ref = "cash-paging" }
 
 [plugins]
 composeMultiplatform = { id = "org.jetbrains.compose", version.ref = "compose-multiplatform" }

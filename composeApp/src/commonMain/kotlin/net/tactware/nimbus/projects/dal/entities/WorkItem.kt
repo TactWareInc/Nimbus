@@ -6,8 +6,8 @@ package net.tactware.nimbus.projects.dal.entities
 data class WorkItem(
     val id: Int,
     val title: String,
-    val description : String,
+    val description : String?,
     val state: String,
-    val assignedTo: String,
-    val type: String
+    val assignedTo: String?,
+    val type: String?
 )
