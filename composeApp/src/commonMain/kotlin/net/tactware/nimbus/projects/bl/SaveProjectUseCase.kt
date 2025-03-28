@@ -16,14 +16,16 @@ class SaveProjectUseCase(private val projectsRepository: ProjectsRepository) {
         personalAccessToken: String,
         id : String? = null
     ) {
-        projectsRepository.storeProject(
-            Project(
-                id = id ?: Uuid.random().toString(),
-                name = projectName,
-                projectUrl = projectUrl,
-                isServerOrService = isDevOpsServer,
-                personalAccessToken = personalAccessToken,
+        if(!projectsRepository.doesProjectUrlExist(projectUrl)) {
+            projectsRepository.storeProject(
+                Project(
+                    id = id ?: Uuid.random().toString(),
+                    name = projectName,
+                    projectUrl = projectUrl,
+                    isServerOrService = isDevOpsServer,
+                    personalAccessToken = personalAccessToken,
+                )
             )
-        )
+        }
     }
 }

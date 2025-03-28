@@ -1,0 +1,22 @@
+-- Create WorkItems table
+CREATE TABLE IF NOT EXISTS WorkItems(
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    workItemId INTEGER NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT,
+    state TEXT NOT NULL,
+    assignedTo TEXT,
+    type TEXT,
+    project TEXT NOT NULL
+);
+
+-- Create FTS virtual table for full-text search
+CREATE VIRTUAL TABLE IF NOT EXISTS WorkItemsFts USING fts4(
+    title TEXT,
+    description TEXT,
+    state TEXT,
+    assignedTo TEXT,
+    type TEXT,
+    content='WorkItems',
+    tokenize = 'unicode61'
+);

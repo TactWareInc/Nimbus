@@ -1,0 +1,93 @@
+
+-- Triggers to keep the FTS table in sync with the main table
+CREATE TRIGGER work_items_ai AFTER INSERT ON WorkItems BEGIN
+    INSERT INTO WorkItemsFts(rowid, title, description, state, assignedTo, type)
+    VALUES (new.id, new.title, new.description, new.state, new.assignedTo, new.type);
+END;
+
+CREATE TRIGGER work_items_ad AFTER DELETE ON WorkItems BEGIN
+    INSERT INTO WorkItemsFts(WorkItemsFts, rowid, title, description, state, assignedTo, type)
+    VALUES ('delete', old.id, old.title, old.description, old.state, old.assignedTo, old.type);
+END;
+
+CREATE TRIGGER work_items_au AFTER UPDATE ON WorkItems BEGIN
+    INSERT INTO WorkItemsFts(WorkItemsFts, rowid, title, description, state, assignedTo, type)
+    VALUES ('delete', old.id, old.title, old.description, old.state, old.assignedTo, old.type);
+    INSERT INTO WorkItemsFts(rowid, title, description, state, assignedTo, type)
+    VALUES (new.id, new.title, new.description, new.state, new.assignedTo, new.type);
+END;
+
+-- CRUD operations
+getWorkItemByWorkItemIdAndProject:
+SELECT * FROM WorkItems WHERE workItemId = ? AND project = ?;
+
+storeWorkItem:
+INSERT OR REPLACE INTO WorkItems(id, workItemId, title, description, state, assignedTo, type, project)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+
+getWorkItemsPage:
+SELECT * FROM WorkItems LIMIT ? OFFSET ?;
+
+getAllWorkItems:
+SELECT * FROM WorkItems;
+
+getWorkItemById:
+SELECT * FROM WorkItems WHERE id = ?;
+
+deleteWorkItem:
+DELETE FROM WorkItems WHERE id = ?;
+
+-- Search operations
+searchWorkItems:
+SELECT WorkItems.*
+FROM WorkItemsFts
+JOIN WorkItems ON WorkItems.id = WorkItemsFts.rowid
+WHERE WorkItemsFts MATCH ?;
+
+searchWorkItemsByTitle:
+SELECT WorkItems.*
+FROM WorkItemsFts
+JOIN WorkItems ON WorkItems.id = WorkItemsFts.rowid
+WHERE WorkItemsFts.title MATCH ?;
+
+searchWorkItemsByState:
+SELECT WorkItems.*
+FROM WorkItemsFts
+JOIN WorkItems ON WorkItems.id = WorkItemsFts.rowid
+WHERE WorkItemsFts.state MATCH ?;
+
+searchWorkItemsByAssignee:
+SELECT WorkItems.*
+FROM WorkItemsFts
+JOIN WorkItems ON WorkItems.id = WorkItemsFts.rowid
+WHERE WorkItemsFts.assignedTo MATCH ?;
+
+searchWorkItemsByType:
+SELECT WorkItems.*
+FROM WorkItemsFts
+JOIN WorkItems ON WorkItems.id = WorkItemsFts.rowid
+WHERE WorkItemsFts.type MATCH ?;
+
+-- Direct match operations
+getWorkItemsByWorkItemId:
+SELECT * FROM WorkItems WHERE workItemId = ?;
+
+searchWorkItemsByExactTitle:
+SELECT * FROM WorkItems WHERE title = ?;
+
+searchWorkItemsByExactState:
+SELECT * FROM WorkItems WHERE state = ?;
+
+-- LIKE-based search operations
+searchWorkItemsLikeFTS:
+WITH search_query AS (
+    SELECT '%' || ? || '%' AS query
+)
+SELECT WorkItems.*
+FROM WorkItemsFts
+JOIN WorkItems ON WorkItems.id = WorkItemsFts.rowid
+WHERE WorkItemsFts.title LIKE (SELECT query FROM search_query)
+   OR WorkItemsFts.description LIKE (SELECT query FROM search_query)
+   OR WorkItemsFts.state LIKE (SELECT query FROM search_query)
+   OR WorkItemsFts.assignedTo LIKE (SELECT query FROM search_query)
+   OR WorkItemsFts.type LIKE (SELECT query FROM search_query);
