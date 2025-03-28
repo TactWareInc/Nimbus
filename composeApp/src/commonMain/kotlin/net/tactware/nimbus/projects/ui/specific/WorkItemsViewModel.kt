@@ -25,10 +25,7 @@ import org.koin.core.annotation.InjectedParam
  */
 @Factory
 class WorkItemsViewModel(
-    @InjectedParam
-    private val projectIdentifier: ProjectIdentifier,
-    private val getProjectByIdUseCase: GetProjectByIdUseCase,
-    private val getWorkItemsPagingDataUseCase: GetWorkItemsPagingDataUseCase,
+    getWorkItemsPagingDataUseCase: GetWorkItemsPagingDataUseCase,
     private val searchWorkItemsUseCase: SearchWorkItemsUseCase
 ) : ViewModel() {
 
@@ -49,8 +46,8 @@ class WorkItemsViewModel(
     val isSearchMode = _isSearchMode.asStateFlow()
 
     // Work items paging data (used when not in search mode)
-    private val _workItemsPaging = MutableStateFlow(getWorkItemsPagingDataUseCase())
-    internal val workItemsPaging = _workItemsPaging.asStateFlow()
+    internal val  workItemsPaging = getWorkItemsPagingDataUseCase()
+
 
     // Debounce job for search
     private var searchJob: Job? = null
@@ -71,7 +68,6 @@ class WorkItemsViewModel(
                 if (query.isBlank()) {
                     // If query is blank, switch to paging mode
                     _isSearchMode.value = false
-                    _workItemsPaging.value = getWorkItemsPagingDataUseCase()
                 } else {
                     // If query is not blank, switch to search mode and perform search
                     _isSearchMode.value = true
