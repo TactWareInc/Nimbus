@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
 import net.tactware.nimbus.projects.bl.GetProjectByIdUseCase
 import net.tactware.nimbus.projects.bl.GetWorkItemsPagingDataUseCase
 import net.tactware.nimbus.projects.bl.SearchWorkItemsUseCase
+import net.tactware.nimbus.projects.dal.entities.Project
 import net.tactware.nimbus.projects.dal.entities.ProjectIdentifier
 import net.tactware.nimbus.projects.dal.entities.WorkItem
 import org.koin.core.annotation.Factory
@@ -26,7 +27,9 @@ import org.koin.core.annotation.InjectedParam
 @Factory
 class WorkItemsViewModel(
     getWorkItemsPagingDataUseCase: GetWorkItemsPagingDataUseCase,
-    private val searchWorkItemsUseCase: SearchWorkItemsUseCase
+    private val searchWorkItemsUseCase: SearchWorkItemsUseCase,
+    private val getProjectByIdUseCase: GetProjectByIdUseCase,
+    @InjectedParam private val projectIdentifier: ProjectIdentifier
 ) : ViewModel() {
 
     // Work items for search results
@@ -46,8 +49,11 @@ class WorkItemsViewModel(
     val isSearchMode = _isSearchMode.asStateFlow()
 
     // Work items paging data (used when not in search mode)
-    internal val  workItemsPaging = getWorkItemsPagingDataUseCase()
+    internal val workItemsPaging = getWorkItemsPagingDataUseCase()
 
+    // Project details
+    private val _project = MutableStateFlow<Project?>(null)
+    val project = _project.asStateFlow()
 
     // Debounce job for search
     private var searchJob: Job? = null
@@ -55,6 +61,32 @@ class WorkItemsViewModel(
     init {
         // Set up debounced search
         setupDebouncedSearch()
+
+        // Load project details
+        loadProject()
+    }
+
+    /**
+     * Loads the project details using the GetProjectByIdUseCase.
+     */
+    private fun loadProject() {
+        viewModelScope.launch {
+            val projectDetails = getProjectByIdUseCase(projectIdentifier.id)
+            _project.value = projectDetails
+        }
+    }
+
+    /**
+     * Gets the URL for a work item.
+     * 
+     * @param workItemId The ID of the work item
+     * @return The URL for the work item, or null if the project details are not available
+     */
+    suspend fun getWorkItemUrl(workItemId: Int): String? {
+        val projectDetails = project.value ?: getProjectByIdUseCase(projectIdentifier.id)
+        return projectDetails?.let {
+            "${it.orgOrCollectionUrl}/${it.projectName}/_workitems/edit/$workItemId"
+        }
     }
 
     /**
