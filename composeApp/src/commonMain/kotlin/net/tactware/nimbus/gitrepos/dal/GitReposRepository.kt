@@ -51,4 +51,8 @@ class GitReposRepository(provider: IDatabaseProvider<NimbusDb>) {
     suspend fun checkIfRepoExists(gitUrl: String): Boolean {
         return queries.checkIfProjectExistsByURL(gitUrl).executeAsOne()
     }
+
+    suspend fun updateCloneStatus(clonePath: String?, isCloned: Boolean, repoId : Long) {
+        queries.updateGitRepoCloneStatus(isCloned, clonePath, repoId)
+    }
 }

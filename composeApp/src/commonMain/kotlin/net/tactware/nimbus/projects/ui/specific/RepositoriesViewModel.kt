@@ -2,11 +2,13 @@ package net.tactware.nimbus.projects.ui.specific
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import net.tactware.nimbus.appwide.ui.DirectoryPicker
 import net.tactware.nimbus.gitrepos.bl.CloneRepositoryUseCase
+import net.tactware.nimbus.gitrepos.bl.GetDownloadingReposUseCase
 import net.tactware.nimbus.gitrepos.bl.GetReposByProjectIdUseCase
 import net.tactware.nimbus.gitrepos.dal.GitRepo
 import net.tactware.nimbus.projects.dal.entities.ProjectIdentifier
@@ -22,6 +24,7 @@ class RepositoriesViewModel(
     private val projectIdentifier: ProjectIdentifier,
     private val getReposByProjectIdUseCase: GetReposByProjectIdUseCase,
     private val cloneRepositoryUseCase: CloneRepositoryUseCase,
+    private val getDownloadingReposUseCase: GetDownloadingReposUseCase,
     private val directoryPicker: DirectoryPicker
 ) : ViewModel() {
 
@@ -37,16 +40,10 @@ class RepositoriesViewModel(
     val isCloning = _isCloning.asStateFlow()
 
     // Currently cloning repository ID
-    private val _cloningRepoId = MutableStateFlow<Long?>(null)
+    private val _cloningRepoId = MutableStateFlow<List<Long>>(listOf())
     val cloningRepoId = _cloningRepoId.asStateFlow()
 
-    // Cloning message
-    private val _cloningMessage = MutableStateFlow<String?>(null)
-    val cloningMessage = _cloningMessage.asStateFlow()
 
-    // Cloning result
-    private val _cloningResult = MutableStateFlow<Result<Unit>?>(null)
-    val cloningResult = _cloningResult.asStateFlow()
 
     init {
         viewModelScope.launch {
@@ -54,16 +51,15 @@ class RepositoriesViewModel(
                 _projectGitRepos.value = it
             }
         }
+        viewModelScope.launch(Dispatchers.Default) {
+            getDownloadingReposUseCase.invoke().collect {
+                // Update the cloning state based on the current downloading repositories
+                _isCloning.value = it.isNotEmpty()
+                _cloningRepoId.value = it.toList()
+            }
+        }
     }
 
-    /**
-     * Updates the search query.
-     * 
-     * @param query The search query
-     */
-    fun updateSearchText(query: String) {
-        _searchText.value = query
-    }
 
     /**
      * Clones the specified repository.
@@ -76,46 +72,19 @@ class RepositoriesViewModel(
             val directory = directoryPicker.pickDirectory("Select directory to clone ${repo.name}")
 
             if (directory != null) {
-                // Set cloning state
-                _isCloning.value = true
-                _cloningRepoId.value = repo.id
-                _cloningMessage.value = "Cloning ${repo.name} to $directory..."
-                _cloningResult.value = null
-
                 try {
-                    // Clone repository
-                    val result = cloneRepositoryUseCase(repo, directory, projectIdentifier)
-                    _cloningResult.value = result
+                    // Clone repository - the use case will update the RepositoryDownloadTracker
+                    cloneRepositoryUseCase(repo, directory, projectIdentifier)
 
-                    // Update message based on result
-                    if (result.isSuccess) {
-                        _cloningMessage.value = "Successfully cloned ${repo.name} to $directory"
-
-                        // Note: After rebuilding, the GitRepo objects will have isCloned and clonePath fields
-                        // that will be automatically updated when the repository is refreshed
-                    } else {
-                        _cloningMessage.value = "Failed to clone ${repo.name}: ${result.exceptionOrNull()?.message}"
-                    }
-                } finally {
-                    // Reset cloning state
-                    _isCloning.value = false
-                    _cloningRepoId.value = null
+                    // Note: After rebuilding, the GitRepo objects will have isCloned and clonePath fields
+                    // that will be automatically updated when the repository is refreshed
+                } catch (e: Exception) {
+                    // Handle any unexpected exceptions
+                    println("Error cloning repository: ${e.message}")
                 }
             }
         }
     }
 
-    /**
-     * Clears the cloning message.
-     */
-    fun clearCloningMessage() {
-        _cloningMessage.value = null
-    }
 
-    /**
-     * Clears the cloning result.
-     */
-    fun clearCloningResult() {
-        _cloningResult.value = null
-    }
 }

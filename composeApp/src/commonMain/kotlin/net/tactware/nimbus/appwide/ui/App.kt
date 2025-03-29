@@ -100,26 +100,6 @@ fun App() {
             showNavItemTitles = isNavExpanded
         }
 
-        // Add some test notifications
-        LaunchedEffect(Unit) {
-            // Clear any existing notifications first
-            NotificationService.clearAllNotifications()
-
-            // Add test notifications
-            NotificationService.addNotification(
-                "Welcome to Nimbus",
-                "Thank you for using Nimbus. This is a test notification."
-            )
-            NotificationService.addNotification(
-                "New Project Created",
-                "Project 'Test Project' has been created successfully."
-            )
-            NotificationService.addNotification(
-                "System Update",
-                "A new system update is available. Please restart the application to apply the update."
-            )
-        }
-
         // Navigation items
         val navItems = listOf(
             NavItem("Dashboard", Icons.Default.Home, "Dashboard"),
