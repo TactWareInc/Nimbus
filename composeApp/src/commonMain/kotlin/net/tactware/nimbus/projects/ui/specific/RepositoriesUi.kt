@@ -51,6 +51,7 @@ fun RepositoriesUi(projectIdentifier: ProjectIdentifier) {
     val repos = viewModel.projectGitRepos.collectAsState().value
     val searchText = viewModel.searchText.collectAsState().value
     val isCloning = viewModel.isCloning.collectAsState().value
+    val cloningRepoId = viewModel.cloningRepoId.collectAsState().value
     val cloningMessage = viewModel.cloningMessage.collectAsState().value
     val cloningResult = viewModel.cloningResult.collectAsState().value
 
@@ -148,18 +149,33 @@ fun RepositoriesUi(projectIdentifier: ProjectIdentifier) {
             LazyColumn(modifier = Modifier.weight(1f)) {
                 items(repos) { repo ->
                     ListItem(
+                        leadingContent = {
+                            if (cloningRepoId == repo.id) {
+                                CircularProgressIndicator()
+                            }
+                        },
                         headlineContent = {
                             Text(repo.name)
                         },
                         supportingContent = {
-                            Text(repo.url)
+                            Column {
+                                Text(repo.url)
+                                // Note: After rebuilding, the GitRepo objects will have isCloned and clonePath fields
+                                if (repo.isCloned) {
+                                    Text("Cloned to: ${repo.clonePath}")
+                                }
+                            }
                         },
                         trailingContent = {
+                            // Note: After rebuilding, the GitRepo objects will have isCloned field
                             IconButton(
                                 onClick = { viewModel.cloneRepository(repo) },
-                                enabled = !isCloning
+                                enabled = !isCloning && !repo.isCloned
                             ) {
-                                Icon(Icons.Default.Add, contentDescription = "Clone Repository")
+                                Icon(
+                                    Icons.Default.Add, 
+                                    contentDescription = if (repo.isCloned) "Repository Already Cloned" else "Clone Repository"
+                                )
                             }
                         }
                     )
@@ -167,15 +183,7 @@ fun RepositoriesUi(projectIdentifier: ProjectIdentifier) {
             }
         }
 
-        // Show loading indicator when cloning
-        if (isCloning) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
-        }
+        // No longer need a full-screen loading indicator as it's now shown in the list item
 
         // Snackbar host at the bottom
         SnackbarHost(

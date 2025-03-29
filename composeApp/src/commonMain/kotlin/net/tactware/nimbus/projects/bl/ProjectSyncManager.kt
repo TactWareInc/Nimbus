@@ -11,6 +11,7 @@ import net.tactware.nimbus.projects.dal.entities.Project
 import org.koin.core.annotation.Single
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
+import kotlin.uuid.Uuid
 
 /**
  * A singleton manager for syncing projects with Azure DevOps.
@@ -65,6 +66,7 @@ class ProjectSyncManager(
      */
     private suspend fun syncProject(project: Project) {
         // We can't directly call projectUpdater.update() because it requires a Uuid
+        projectUpdater.update(Uuid.parse(project.id))
         // Instead, we'll refresh the work items directly
         refreshWorkItems(project)
     }

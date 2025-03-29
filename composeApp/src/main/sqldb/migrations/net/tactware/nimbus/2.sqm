@@ -1,0 +1,19 @@
+import kotlin.Boolean;
+
+-- Create GitRepos table
+CREATE TABLE IF NOT EXISTS GitRepos(
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    name TEXT NOT NULL,
+    url TEXT NOT NULL,
+    is_cloned INTEGER AS Boolean DEFAULT 0 NOT NULL,
+    clone_path TEXT
+);
+
+-- Create ProjectsToGitRepos table if it doesn't exist
+CREATE TABLE IF NOT EXISTS ProjectsToGitRepos(
+    project_id TEXT NOT NULL,
+    git_repo_id INTEGER NOT NULL,
+    PRIMARY KEY (project_id, git_repo_id),
+    FOREIGN KEY (git_repo_id) REFERENCES GitRepos(id) ON DELETE CASCADE
+);
+

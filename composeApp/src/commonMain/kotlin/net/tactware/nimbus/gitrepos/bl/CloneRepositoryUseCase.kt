@@ -14,7 +14,8 @@ import java.io.File
  */
 @Factory
 class CloneRepositoryUseCase(
-    private val getProjectByIdUseCase: GetProjectByIdUseCase
+    private val getProjectByIdUseCase: GetProjectByIdUseCase,
+    private val gitReposRepository: net.tactware.nimbus.gitrepos.dal.GitReposRepository
 ) {
 
     /**
@@ -53,6 +54,14 @@ class CloneRepositoryUseCase(
             }
 
             cloneCommand.call().close()
+
+            // Update repository clone status and path
+            // Note: This method will be available after rebuilding
+            // gitReposRepository.updateRepoCloneStatus(
+            //     repoId = repo.id,
+            //     isCloned = true,
+            //     clonePath = targetDir.absolutePath
+            // )
 
             // Return success
             Result.success(Unit)

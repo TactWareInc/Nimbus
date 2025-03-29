@@ -36,6 +36,10 @@ class RepositoriesViewModel(
     private val _isCloning = MutableStateFlow(false)
     val isCloning = _isCloning.asStateFlow()
 
+    // Currently cloning repository ID
+    private val _cloningRepoId = MutableStateFlow<Long?>(null)
+    val cloningRepoId = _cloningRepoId.asStateFlow()
+
     // Cloning message
     private val _cloningMessage = MutableStateFlow<String?>(null)
     val cloningMessage = _cloningMessage.asStateFlow()
@@ -74,6 +78,7 @@ class RepositoriesViewModel(
             if (directory != null) {
                 // Set cloning state
                 _isCloning.value = true
+                _cloningRepoId.value = repo.id
                 _cloningMessage.value = "Cloning ${repo.name} to $directory..."
                 _cloningResult.value = null
 
@@ -85,12 +90,16 @@ class RepositoriesViewModel(
                     // Update message based on result
                     if (result.isSuccess) {
                         _cloningMessage.value = "Successfully cloned ${repo.name} to $directory"
+
+                        // Note: After rebuilding, the GitRepo objects will have isCloned and clonePath fields
+                        // that will be automatically updated when the repository is refreshed
                     } else {
                         _cloningMessage.value = "Failed to clone ${repo.name}: ${result.exceptionOrNull()?.message}"
                     }
                 } finally {
                     // Reset cloning state
                     _isCloning.value = false
+                    _cloningRepoId.value = null
                 }
             }
         }

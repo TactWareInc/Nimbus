@@ -7,7 +7,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import net.tactware.nimbus.Projects
+import migrations.net.tactware.nimbus.Projects
 import net.tactware.nimbus.appwide.dal.IDatabaseProvider
 import net.tactware.nimbus.db.NimbusDb
 import net.tactware.nimbus.projects.dal.entities.DevOpsServerOrService
