@@ -13,10 +13,10 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -48,6 +48,10 @@ fun RepositoriesUi(projectIdentifier: ProjectIdentifier) {
     val searchText = viewModel.searchText.collectAsState().value
     val isCloning = viewModel.isCloning.collectAsState().value
     val cloningRepoId = viewModel.cloningRepoId.collectAsState().value
+    val showCustomNameDialog = viewModel.showCustomNameDialog.collectAsState().value
+
+    // State for the custom name input
+    var customName by remember { mutableStateOf("") }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column {
@@ -98,6 +102,43 @@ fun RepositoriesUi(projectIdentifier: ProjectIdentifier) {
             }
         }
 
-        // No longer need a full-screen loading indicator as it's now shown in the list item
+        // Show custom name dialog if needed
+        showCustomNameDialog?.let { repo ->
+            // Reset custom name when dialog is shown
+            LaunchedEffect(repo) {
+                customName = repo.name
+            }
+
+            AlertDialog(
+                onDismissRequest = { viewModel.dismissCustomNameDialog() },
+                title = { Text("Clone Repository") },
+                text = {
+                    Column {
+                        Text("Enter a name for the cloned repository:")
+                        OutlinedTextField(
+                            value = customName,
+                            onValueChange = { customName = it },
+                            label = { Text("Repository Name") },
+                            singleLine = true,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = { viewModel.cloneWithCustomName(customName.takeIf { it.isNotBlank() }) }
+                    ) {
+                        Text("Clone")
+                    }
+                },
+                dismissButton = {
+                    OutlinedButton(
+                        onClick = { viewModel.dismissCustomNameDialog() }
+                    ) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
     }
 }

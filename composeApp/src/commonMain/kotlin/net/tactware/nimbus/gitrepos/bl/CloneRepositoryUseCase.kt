@@ -21,15 +21,17 @@ class CloneRepositoryUseCase(
      * @param repo The Git repository to clone
      * @param directory The directory to clone the repository to
      * @param projectIdentifier The identifier of the project that the repository belongs to
+     * @param customName Optional custom name for the cloned repository
      * @return Result indicating success or failure with an error message
      */
-    operator fun invoke(repo: GitRepo, directory: String, projectIdentifier: ProjectIdentifier? = null): Result<Unit> {
+    operator fun invoke(repo: GitRepo, directory: String, projectIdentifier: ProjectIdentifier? = null, customName: String? = null): Result<Unit> {
         // Delegate to the RepositoryDownloadTracker for the actual cloning logic
         return repositoryDownloadTracker.cloneRepository(
             repo = repo,
             directory = directory,
             projectIdentifier = projectIdentifier,
             getProjectByIdUseCase = getProjectByIdUseCase,
+            customName = customName,
         )
     }
 }

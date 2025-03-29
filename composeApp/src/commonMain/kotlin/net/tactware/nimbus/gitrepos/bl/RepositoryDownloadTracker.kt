@@ -55,6 +55,7 @@ interface RepositoryDownloadTracker {
      * @param directory The directory to clone the repository to
      * @param projectIdentifier The identifier of the project that the repository belongs to
      * @param getProjectByIdUseCase Use case to get project details for authentication
+     * @param customName Optional custom name for the cloned repository
      * @param gitReposRepository Repository for updating clone status
      * @return Result indicating success or failure with an error message
      */
@@ -63,5 +64,6 @@ interface RepositoryDownloadTracker {
         directory: String, 
         projectIdentifier: ProjectIdentifier? = null,
         getProjectByIdUseCase: GetProjectByIdUseCase,
+        customName: String? = null,
     ): Result<Unit>
 }

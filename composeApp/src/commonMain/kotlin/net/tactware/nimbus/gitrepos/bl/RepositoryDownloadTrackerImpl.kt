@@ -79,6 +79,7 @@ class RepositoryDownloadTrackerImpl(
      * @param directory The directory to clone the repository to
      * @param projectIdentifier The identifier of the project that the repository belongs to
      * @param getProjectByIdUseCase Use case to get project details for authentication
+     * @param customName Optional custom name for the cloned repository
      * @param gitReposRepository Repository for updating clone status
      * @return Result indicating success or failure with an error message
      */
@@ -87,6 +88,7 @@ class RepositoryDownloadTrackerImpl(
         directory: String,
         projectIdentifier: ProjectIdentifier?,
         getProjectByIdUseCase: GetProjectByIdUseCase,
+        customName: String?,
     ): Result<Unit> {
         // Check if the repository is already being downloaded
         if (isDownloading(repo.id)) {
@@ -105,7 +107,7 @@ class RepositoryDownloadTrackerImpl(
                 startDownloading(repo.id)
 
                 // Create a File object for the target directory
-                val targetDir = File(directory, repo.name)
+                val targetDir = File(directory, customName ?: repo.name)
 
                 // Ensure the parent directory exists
                 targetDir.parentFile?.mkdirs()

@@ -32,13 +32,6 @@ fun SpecificProjectUi(projectIdentifier: ProjectIdentifier) {
 
     Scaffold { scaffoldPadding ->
         Column(modifier = Modifier.padding(scaffoldPadding)) {
-            // Project name header
-            Text(
-                text = projectIdentifier.name,
-                style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.padding(8.dp)
-            )
-
             // Tabs for repositories and work items
             TabRow(selectedTabIndex = selectedTabIndex) {
                 tabs.forEachIndexed { index, title ->
