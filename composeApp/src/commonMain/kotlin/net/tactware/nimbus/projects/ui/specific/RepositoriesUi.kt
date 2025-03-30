@@ -1,38 +1,64 @@
 package net.tactware.nimbus.projects.ui.specific
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Divider
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
+import net.tactware.nimbus.appwide.ui.theme.spacing
+import net.tactware.nimbus.gitrepos.dal.GitRepo
 import net.tactware.nimbus.projects.dal.entities.ProjectIdentifier
-import net.tactware.nimbus.projects.ui.ExposedSearchMenu
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -46,6 +72,8 @@ fun RepositoriesUi(projectIdentifier: ProjectIdentifier) {
     // Collect states from view model
     val repos = viewModel.projectGitRepos.collectAsState().value
     val searchText = viewModel.searchText.collectAsState().value
+    val isSearchMode = viewModel.isSearchMode.collectAsState().value
+    val filteredRepos = viewModel.filteredRepos.collectAsState().value
     val isCloning = viewModel.isCloning.collectAsState().value
     val cloningRepoId = viewModel.cloningRepoId.collectAsState().value
     val showCustomNameDialog = viewModel.showCustomNameDialog.collectAsState().value
@@ -54,50 +82,118 @@ fun RepositoriesUi(projectIdentifier: ProjectIdentifier) {
     var customName by remember { mutableStateOf("") }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        Column {
-            // List of repositories
-            LazyColumn(modifier = Modifier.weight(1f)) {
-                items(repos) { repo ->
-                    ListItem(
-                        leadingContent = {
-                            if (cloningRepoId.contains(repo.id)) {
-                                CircularProgressIndicator()
-                            }
-                        },
-                        headlineContent = {
-                            Text(repo.name)
-                        },
-                        supportingContent = {
-                            Column {
-                                Text(repo.url)
-                                // Note: After rebuilding, the GitRepo objects will have isCloned and clonePath fields
-                                if (repo.isCloned) {
-                                    Text("Cloned to: ${repo.clonePath}")
-                                }
-                            }
-                        },
-                        trailingContent = {
-                            // Show Build icon if repository is cloned locally
-                            if (repo.isCloned) {
-                                Icon(
-                                    Icons.Default.Build,
-                                    contentDescription = "Repository Cloned Locally",
-                                    modifier = Modifier.padding(end = 8.dp)
-                                )
-                            }
+        Column(modifier = Modifier.padding(MaterialTheme.spacing.medium)) {
+            // Search field for repositories with improved styling
+            OutlinedTextField(
+                value = searchText,
+                onValueChange = { 
+                    viewModel.updateSearchQuery(it)
+                },
+                label = { Text("Search Repositories") },
+                leadingIcon = { 
+                    Icon(
+                        Icons.Filled.Search, 
+                        contentDescription = "Search",
+                        tint = MaterialTheme.colorScheme.primary
+                    ) 
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = MaterialTheme.spacing.medium),
+                shape = RoundedCornerShape(8.dp)
+            )
 
-                            // Show Add button if repository is not cloned
-                            IconButton(
-                                onClick = { viewModel.cloneRepository(repo) },
-                                enabled = !isCloning && !repo.isCloned
-                            ) {
-                                Icon(
-                                    Icons.Default.Add,
-                                    contentDescription = if (repo.isCloned) "Repository Already Cloned" else "Clone Repository"
-                                )
-                            }
-                        }
+            // Loading indicator with improved styling
+            if (isCloning) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = MaterialTheme.spacing.small),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        "Cloning repository...",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(MaterialTheme.spacing.medium),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                }
+            }
+
+            // Repositories header with improved styling
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = MaterialTheme.spacing.small),
+                color = MaterialTheme.colorScheme.primaryContainer,
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(MaterialTheme.spacing.medium),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "ID",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.weight(0.1f)
+                    )
+                    Text(
+                        "Name",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.weight(0.4f)
+                    )
+                    Text(
+                        "URL",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.weight(0.3f)
+                    )
+                    Text(
+                        "Status",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.weight(0.2f)
+                    )
+                }
+            }
+
+            // Display repositories based on search mode
+            val displayRepos = if (isSearchMode) filteredRepos else repos
+
+            if (displayRepos.isEmpty()) {
+                // Show message for empty repositories
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = MaterialTheme.spacing.small),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        if (isSearchMode) "No matching repositories found" else "No repositories found",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(MaterialTheme.spacing.medium),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            // List of repositories with improved styling
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(MaterialTheme.spacing.small)
+            ) {
+                items(displayRepos) { repo ->
+                    RepositoryRow(repo, viewModel, cloningRepoId)
                 }
             }
         }
@@ -139,6 +235,188 @@ fun RepositoriesUi(projectIdentifier: ProjectIdentifier) {
                     }
                 }
             )
+        }
+    }
+}
+
+/**
+ * Displays a single repository row as a card.
+ * When clicked, it expands to show more details and actions.
+ */
+@Composable
+private fun RepositoryRow(
+    repo: GitRepo,
+    viewModel: RepositoriesViewModel,
+    cloningRepoIds: List<Long>
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+
+    // Determine status color based on repository state
+    val statusColor = when {
+        cloningRepoIds.contains(repo.id) -> MaterialTheme.colorScheme.primary
+        repo.isCloned -> MaterialTheme.colorScheme.tertiary
+        else -> MaterialTheme.colorScheme.outline
+    }
+
+    ElevatedCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { expanded = !expanded },
+        elevation = CardDefaults.elevatedCardElevation(
+            defaultElevation = 2.dp,
+            pressedElevation = 4.dp
+        ),
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(MaterialTheme.spacing.medium)
+        ) {
+            // Main row with basic information
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // ID with subtle background
+                Surface(
+                    modifier = Modifier.weight(0.1f),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    shape = RoundedCornerShape(4.dp)
+                ) {
+                    Text(
+                        repo.id.toString(),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(horizontal = MaterialTheme.spacing.small, vertical = MaterialTheme.spacing.tiny),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(MaterialTheme.spacing.small))
+
+                // Name with emphasis
+                Text(
+                    repo.name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = if (expanded) Int.MAX_VALUE else 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(0.4f)
+                )
+
+                Spacer(modifier = Modifier.width(MaterialTheme.spacing.small))
+
+                // URL with subtle styling
+                Text(
+                    repo.url,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(0.3f)
+                )
+
+                Spacer(modifier = Modifier.width(MaterialTheme.spacing.small))
+
+                // Status with colored indicator
+                Row(
+                    modifier = Modifier.weight(0.2f),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Colored circle indicator
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .clip(CircleShape)
+                            .background(statusColor)
+                    )
+
+                    Spacer(modifier = Modifier.width(MaterialTheme.spacing.tiny))
+
+                    Text(
+                        when {
+                            cloningRepoIds.contains(repo.id) -> "Cloning"
+                            repo.isCloned -> "Cloned"
+                            else -> "Not Cloned"
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
+            // Expanded content with details and actions
+            AnimatedVisibility(
+                visible = expanded,
+                enter = fadeIn(animationSpec = tween(300)) + expandVertically(
+                    animationSpec = spring(
+                        dampingRatio = 0.7f,
+                        stiffness = 300f
+                    )
+                ),
+                exit = fadeOut(animationSpec = tween(300)) + shrinkVertically(
+                    animationSpec = spring(
+                        dampingRatio = 0.7f,
+                        stiffness = 300f
+                    )
+                )
+            ) {
+                Column {
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+
+                    Divider(color = MaterialTheme.colorScheme.outlineVariant)
+
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+
+                    // Clone path if available
+                    if (repo.isCloned && repo.clonePath != null) {
+                        Text(
+                            "Clone Path",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(bottom = MaterialTheme.spacing.small)
+                        )
+
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Text(
+                                repo.clonePath,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(MaterialTheme.spacing.medium)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+                    }
+
+                    // Actions
+                    Button(
+                        onClick = { 
+                            if (!repo.isCloned) {
+                                viewModel.cloneRepository(repo)
+                            }
+                        },
+                        enabled = !cloningRepoIds.contains(repo.id) && !repo.isCloned,
+                        modifier = Modifier.align(Alignment.End)
+                    ) {
+                        Icon(
+                            Icons.Filled.Add,
+                            contentDescription = "Clone Repository",
+                            modifier = Modifier.size(16.dp)
+                        )
+
+                        Spacer(modifier = Modifier.width(MaterialTheme.spacing.small))
+
+                        Text("Clone Repository")
+                    }
+                }
+            }
         }
     }
 }

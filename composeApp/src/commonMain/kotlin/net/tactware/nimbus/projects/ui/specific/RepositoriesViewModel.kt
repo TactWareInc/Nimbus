@@ -37,6 +37,14 @@ class RepositoriesViewModel(
     private val _searchText = MutableStateFlow("")
     val searchText = _searchText.asStateFlow()
 
+    // Filtered repositories based on search query
+    private val _filteredRepos = MutableStateFlow<List<GitRepo>>(emptyList())
+    val filteredRepos = _filteredRepos.asStateFlow()
+
+    // Search mode flag
+    private val _isSearchMode = MutableStateFlow(false)
+    val isSearchMode = _isSearchMode.asStateFlow()
+
     // Cloning state
     private val _isCloning = MutableStateFlow(false)
     val isCloning = _isCloning.asStateFlow()
@@ -59,6 +67,8 @@ class RepositoriesViewModel(
         viewModelScope.launch {
             getReposByProjectIdUseCase.invoke(projectIdentifier.id).collect {
                 _projectGitRepos.value = it
+                // Initialize filtered repos with all repos
+                updateFilteredRepos(it, _searchText.value)
             }
         }
         viewModelScope.launch(Dispatchers.Default) {
@@ -70,6 +80,37 @@ class RepositoriesViewModel(
         }
     }
 
+    /**
+     * Updates the search query and filters repositories accordingly.
+     * 
+     * @param query The search query
+     */
+    fun updateSearchQuery(query: String) {
+        _searchText.value = query
+        _isSearchMode.value = query.isNotBlank()
+        updateFilteredRepos(_projectGitRepos.value, query)
+    }
+
+    /**
+     * Updates the filtered repositories based on the search query.
+     * 
+     * @param repos The list of repositories to filter
+     * @param query The search query
+     */
+    private fun updateFilteredRepos(repos: List<GitRepo>, query: String) {
+        if (query.isBlank()) {
+            _filteredRepos.value = repos
+            return
+        }
+
+        val lowerQuery = query.lowercase()
+        _filteredRepos.value = repos.filter { repo ->
+            repo.name.lowercase().contains(lowerQuery) ||
+            repo.url.lowercase().contains(lowerQuery) ||
+            repo.id.toString().contains(lowerQuery)
+        }
+    }
+
 
     /**
      * Starts the cloning process for the specified repository.
@@ -78,9 +119,6 @@ class RepositoriesViewModel(
      * @param repo The repository to clone
      */
     fun cloneRepository(repo: GitRepo) {
-        // Start tracking this repository as being downloaded
-        repositoryDownloadTracker.startDownloading(repo.id)
-
         viewModelScope.launch {
             // Show directory picker
             val directory = directoryPicker.pickDirectory("Select directory to clone ${repo.name}")
@@ -90,29 +128,17 @@ class RepositoriesViewModel(
                 _selectedDirectory.value = directory
                 // Show the custom name dialog
                 _showCustomNameDialog.value = repo
-            } else {
-                // If directory selection was canceled, stop tracking this repository
-                repositoryDownloadTracker.stopDownloading(repo.id)
             }
         }
     }
 
     /**
      * Dismisses the custom name dialog without cloning.
-     * Also stops tracking the repository as being downloaded.
      */
     fun dismissCustomNameDialog() {
-        // Get the repository before clearing the dialog state
-        val repo = _showCustomNameDialog.value
-
         // Clear the dialog state
         _showCustomNameDialog.value = null
         _selectedDirectory.value = null
-
-        // Stop tracking the repository as being downloaded if it exists
-        repo?.let { 
-            repositoryDownloadTracker.stopDownloading(it.id)
-        }
     }
 
     /**
@@ -135,6 +161,8 @@ class RepositoriesViewModel(
                 } catch (e: Exception) {
                     // Handle any unexpected exceptions
                     println("Error cloning repository: ${e.message}")
+                    // Stop tracking this repository as being downloaded if there's an error
+                    repositoryDownloadTracker.stopDownloading(repo.id)
                 } finally {
                     // Clear the dialog state
                     _showCustomNameDialog.value = null

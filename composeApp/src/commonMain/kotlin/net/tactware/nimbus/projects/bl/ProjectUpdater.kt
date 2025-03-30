@@ -7,6 +7,7 @@ import net.tactware.nimbus.gitrepos.dal.GitReposRepository
 import net.tactware.nimbus.projects.dal.entities.Project
 import net.tactware.nimbus.projects.dal.entities.azurejson.repo.ProjectRepoInformation
 import org.koin.core.annotation.Single
+import java.io.File
 import kotlin.uuid.Uuid
 
 @Single
@@ -31,6 +32,14 @@ class ProjectUpdater(
 
         for (repoInfo in repoInfos) {
                 gitReposRepository.storeRepo(repoInfo.webUrl, repoInfo.name, project.id)
+        }
+
+        // Check to see if local repositories are still valid
+        gitReposRepository.getReposByProjectIdList(Uuid.parse(project.id)).filter { it.isCloned }.forEach {
+            val doesPathStillExist = it.clonePath?.let { File(it).exists() } == true
+            if (!doesPathStillExist) {
+                gitReposRepository.updateCloneStatus(null, false, it.id)
+            }
         }
     }
 }

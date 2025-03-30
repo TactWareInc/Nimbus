@@ -94,8 +94,8 @@ class RepositoryDownloadTrackerImpl(
         if (isDownloading(repo.id)) {
             // Send a notification to the user
             NotificationService.addNotification(
-                title = "Repository Already Downloading",
-                message = "The repository '${repo.name}' is already being downloaded."
+                title = "Repository Already Cloning",
+                message = "The repository '${repo.name}' is already being cloned."
             )
             return Result.success(Unit)
         }

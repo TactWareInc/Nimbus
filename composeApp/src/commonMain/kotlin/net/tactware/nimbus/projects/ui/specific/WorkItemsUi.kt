@@ -1,21 +1,41 @@
 package net.tactware.nimbus.projects.ui.specific
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -25,10 +45,17 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.animation.core.spring
 import app.cash.paging.compose.collectAsLazyPagingItems
 import kotlinx.coroutines.launch
 import net.tactware.nimbus.appwide.ui.BrowserLauncher
+import net.tactware.nimbus.appwide.ui.theme.spacing
+import net.tactware.nimbus.appwide.utils.HtmlUtils
 import net.tactware.nimbus.projects.dal.entities.ProjectIdentifier
 import net.tactware.nimbus.projects.dal.entities.WorkItem
 import org.koin.compose.koinInject
@@ -49,85 +76,130 @@ fun WorkItemsUi(projectIdentifier: ProjectIdentifier) {
     val workItemsPaging = viewModel.workItemsPaging.collectAsLazyPagingItems()
     val isLoading = viewModel.isLoading.collectAsState().value
 
-    Column(modifier = Modifier.padding(8.dp)) {
-        // Search field for work items
+    Column(modifier = Modifier.padding(MaterialTheme.spacing.medium)) {
+        // Search field for work items with improved styling
         val searchText = viewModel.searchQuery.collectAsState().value
-        TextField(
+        OutlinedTextField(
             value = searchText,
             onValueChange = { 
                 viewModel.updateSearchQuery(it)
             },
             label = { Text("Search Work Items") },
-            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+            leadingIcon = { 
+                Icon(
+                    Icons.Filled.Search, 
+                    contentDescription = "Search",
+                    tint = MaterialTheme.colorScheme.primary
+                ) 
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = MaterialTheme.spacing.medium),
+            shape = RoundedCornerShape(8.dp)
         )
 
-        // Loading indicator
+        // Loading indicator with improved styling
         if (isLoading) {
-            Text(
-                "Loading...",
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(8.dp)
-            )
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = MaterialTheme.spacing.small),
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text(
+                    "Loading...",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(MaterialTheme.spacing.medium),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
 
-        // Work items header
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
+        // Work items header with improved styling
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = MaterialTheme.spacing.small),
+            color = MaterialTheme.colorScheme.primaryContainer,
+            shape = RoundedCornerShape(8.dp)
         ) {
-            Text(
-                "ID",
-                style = MaterialTheme.typography.titleSmall,
-                modifier = Modifier.weight(0.1f)
-            )
-            Text(
-                "Title",
-                style = MaterialTheme.typography.titleSmall,
-                modifier = Modifier.weight(0.5f)
-            )
-            Text(
-                "State",
-                style = MaterialTheme.typography.titleSmall,
-                modifier = Modifier.weight(0.2f)
-            )
-            Text(
-                "Assigned To",
-                style = MaterialTheme.typography.titleSmall,
-                modifier = Modifier.weight(0.2f)
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(MaterialTheme.spacing.medium),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "ID",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.weight(0.1f)
+                )
+                Text(
+                    "Title",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.weight(0.5f)
+                )
+                Text(
+                    "State",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.weight(0.2f)
+                )
+                Text(
+                    "Assigned To",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.weight(0.2f)
+                )
+            }
         }
-        Divider()
 
         // Display work items based on mode (search or paging)
         if (isSearchMode) {
             // Display search results
             LazyColumn(
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(MaterialTheme.spacing.small)
             ) {
                 items(searchResults) { workItem ->
                     WorkItemRow(workItem, viewModel, browserLauncher)
-                    Divider()
                 }
             }
         } else {
             // Display paged work items
             if (workItemsPaging.itemCount == 0 && !isLoading) {
-                // Show loading indicator for initial paging data load
-                Text(
-                    "Loading work items...",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(8.dp)
-                )
+                // Show message for empty work items
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = MaterialTheme.spacing.small),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        "Loading work items...",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(MaterialTheme.spacing.medium),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
 
             LazyColumn(
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(MaterialTheme.spacing.small)
             ) {
                 items(workItemsPaging.itemCount) { index ->
                     val workItem = workItemsPaging[index]
                     if (workItem != null) {
                         WorkItemRow(workItem, viewModel, browserLauncher)
-                        Divider()
                     }
                 }
             }
@@ -136,7 +208,7 @@ fun WorkItemsUi(projectIdentifier: ProjectIdentifier) {
 }
 
 /**
- * Displays a single work item row.
+ * Displays a single work item row as a card.
  * When clicked, it expands to show the description and actions.
  */
 @Composable
@@ -148,69 +220,165 @@ private fun WorkItemRow(
     var expanded by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
-    Column(
+    // Determine state color based on work item state
+    val stateColor = when (workItem.state.lowercase()) {
+        "active", "in progress" -> MaterialTheme.colorScheme.primary
+        "resolved", "closed", "done", "completed" -> MaterialTheme.colorScheme.tertiary
+        "new" -> MaterialTheme.colorScheme.secondary
+        else -> MaterialTheme.colorScheme.outline
+    }
+
+    ElevatedCard(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { expanded = !expanded }
-            .padding(vertical = 8.dp)
+            .clickable { expanded = !expanded },
+        elevation = CardDefaults.elevatedCardElevation(
+            defaultElevation = 2.dp,
+            pressedElevation = 4.dp
+        ),
+        shape = RoundedCornerShape(8.dp)
     ) {
-        // Main row with basic information
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(MaterialTheme.spacing.medium)
         ) {
-            Text(
-                workItem.id.toString(),
-                modifier = Modifier.weight(0.1f)
-            )
-            Text(
-                workItem.title,
-                modifier = Modifier.weight(0.5f)
-            )
-            Text(
-                workItem.state,
-                modifier = Modifier.weight(0.2f)
-            )
-            Text(
-                workItem.assignedTo ?: "Unassigned",
-                modifier = Modifier.weight(0.2f)
-            )
-        }
-
-        // Expanded content with description and actions
-        if (expanded) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 16.dp, top = 8.dp, end = 16.dp)
+            // Main row with basic information
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // Description
-                if (workItem.description != null && workItem.description.isNotBlank()) {
+                // ID with subtle background
+                Surface(
+                    modifier = Modifier.weight(0.1f),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    shape = RoundedCornerShape(4.dp)
+                ) {
                     Text(
-                        "Description:",
-                        style = MaterialTheme.typography.titleSmall,
-                        modifier = Modifier.padding(bottom = 4.dp)
-                    )
-                    Text(
-                        workItem.description,
+                        workItem.id.toString(),
                         style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                } else {
-                    Text(
-                        "No description available",
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(bottom = 8.dp)
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(horizontal = MaterialTheme.spacing.small, vertical = MaterialTheme.spacing.tiny),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
-                // Actions
+                Spacer(modifier = Modifier.width(MaterialTheme.spacing.small))
+
+                // Title with emphasis
+                Text(
+                    workItem.title,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = if (expanded) Int.MAX_VALUE else 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(0.5f)
+                )
+
+                Spacer(modifier = Modifier.width(MaterialTheme.spacing.small))
+
+                // State with colored indicator
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.weight(0.2f),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Open in browser button
-                    IconButton(
+                    // Colored circle indicator
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .clip(CircleShape)
+                            .background(stateColor)
+                    )
+
+                    Spacer(modifier = Modifier.width(MaterialTheme.spacing.tiny))
+
+                    Text(
+                        workItem.state,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(MaterialTheme.spacing.small))
+
+                // Assigned To with subtle styling
+                Text(
+                    workItem.assignedTo ?: "Unassigned",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (workItem.assignedTo == null) 
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f) 
+                    else 
+                        MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(0.2f)
+                )
+            }
+
+            // Expanded content with description and actions
+            AnimatedVisibility(
+                visible = expanded,
+                enter = fadeIn(animationSpec = tween(300)) + expandVertically(
+                    animationSpec = spring(
+                        dampingRatio = 0.7f,
+                        stiffness = 300f
+                    )
+                ),
+                exit = fadeOut(animationSpec = tween(300)) + shrinkVertically(
+                    animationSpec = spring(
+                        dampingRatio = 0.7f,
+                        stiffness = 300f
+                    )
+                )
+            ) {
+                Column {
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+
+                    Divider(color = MaterialTheme.colorScheme.outlineVariant)
+
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+
+                    // Description
+                    if (workItem.description != null && workItem.description.isNotBlank()) {
+                        Text(
+                            "Description",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(bottom = MaterialTheme.spacing.small)
+                        )
+
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Text(
+                                HtmlUtils.htmlToText(workItem.description),
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(MaterialTheme.spacing.medium)
+                            )
+                        }
+                    } else {
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Text(
+                                "No description available",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                modifier = Modifier.padding(MaterialTheme.spacing.medium)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+
+                    // Actions
+                    Button(
                         onClick = { 
                             coroutineScope.launch {
                                 val url = viewModel.getWorkItemUrl(workItem.id)
@@ -221,17 +389,19 @@ private fun WorkItemRow(
                                     println("Failed to get URL for work item ${workItem.id}")
                                 }
                             }
-                        }
+                        },
+                        modifier = Modifier.align(Alignment.End)
                     ) {
                         Icon(
                             Icons.Filled.Search,
-                            contentDescription = "Open in browser"
+                            contentDescription = "Open in browser",
+                            modifier = Modifier.size(16.dp)
                         )
+
+                        Spacer(modifier = Modifier.width(MaterialTheme.spacing.small))
+
+                        Text("Open in browser")
                     }
-                    Text(
-                        "Open in browser",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
                 }
             }
         }

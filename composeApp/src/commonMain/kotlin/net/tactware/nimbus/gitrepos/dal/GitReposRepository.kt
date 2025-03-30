@@ -23,6 +23,8 @@ class GitReposRepository(provider: IDatabaseProvider<NimbusDb>) {
                 id = id,
                 name = name,
                 url = url,
+                isCloned = is_cloned,
+                clonePath = clone_path
             )
         }
     }
@@ -54,5 +56,9 @@ class GitReposRepository(provider: IDatabaseProvider<NimbusDb>) {
 
     suspend fun updateCloneStatus(clonePath: String?, isCloned: Boolean, repoId : Long) {
         queries.updateGitRepoCloneStatus(isCloned, clonePath, repoId)
+    }
+
+    suspend fun getReposByProjectIdList(projectId: Uuid): List<GitRepo> {
+        return queries.getAllGitReposForProject(projectId.toString()).executeAsList().map(mapper)
     }
 }
