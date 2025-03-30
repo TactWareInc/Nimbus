@@ -10,6 +10,7 @@ import net.tactware.nimbus.appwide.ui.DirectoryPicker
 import net.tactware.nimbus.gitrepos.bl.CloneRepositoryUseCase
 import net.tactware.nimbus.gitrepos.bl.GetDownloadingReposUseCase
 import net.tactware.nimbus.gitrepos.bl.GetReposByProjectIdUseCase
+import net.tactware.nimbus.gitrepos.bl.LinkExistingRepositoryUseCase
 import net.tactware.nimbus.gitrepos.bl.RepositoryDownloadTracker
 import net.tactware.nimbus.gitrepos.dal.GitRepo
 import net.tactware.nimbus.projects.dal.entities.ProjectIdentifier
@@ -25,6 +26,7 @@ class RepositoriesViewModel(
     private val projectIdentifier: ProjectIdentifier,
     private val getReposByProjectIdUseCase: GetReposByProjectIdUseCase,
     private val cloneRepositoryUseCase: CloneRepositoryUseCase,
+    private val linkExistingRepositoryUseCase: LinkExistingRepositoryUseCase,
     private val getDownloadingReposUseCase: GetDownloadingReposUseCase,
     private val repositoryDownloadTracker: RepositoryDownloadTracker,
     private val directoryPicker: DirectoryPicker
@@ -172,5 +174,26 @@ class RepositoriesViewModel(
         }
     }
 
+    /**
+     * Links an existing local Git repository to a repository in the database.
+     * Shows a directory picker to select the existing repository.
+     * 
+     * @param repo The repository to link
+     */
+    fun linkExistingRepository(repo: GitRepo) {
+        viewModelScope.launch {
+            // Show directory picker to select the existing repository
+            val localPath = directoryPicker.pickDirectory("Select existing repository for ${repo.name}")
 
+            if (localPath != null) {
+                try {
+                    // Link the existing repository
+                    linkExistingRepositoryUseCase(repo, localPath)
+                } catch (e: Exception) {
+                    // Handle any unexpected exceptions
+                    println("Error linking repository: ${e.message}")
+                }
+            }
+        }
+    }
 }

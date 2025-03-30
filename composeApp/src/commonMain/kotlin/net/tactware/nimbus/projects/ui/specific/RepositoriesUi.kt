@@ -372,24 +372,46 @@ private fun RepositoryRow(
                     }
 
                     // Actions
-                    Button(
-                        onClick = { 
-                            if (!repo.isCloned) {
-                                viewModel.cloneRepository(repo)
-                            }
-                        },
-                        enabled = !cloningRepoIds.contains(repo.id) && !repo.isCloned,
-                        modifier = Modifier.align(Alignment.End)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End
                     ) {
-                        Icon(
-                            Icons.Filled.Add,
-                            contentDescription = "Clone Repository",
-                            modifier = Modifier.size(16.dp)
-                        )
+                        // Link Existing Repository button
+                        OutlinedButton(
+                            onClick = { viewModel.linkExistingRepository(repo) },
+                            enabled = !cloningRepoIds.contains(repo.id) && !repo.isCloned,
+                            modifier = Modifier.padding(end = MaterialTheme.spacing.small)
+                        ) {
+                            Icon(
+                                Icons.Filled.Build,
+                                contentDescription = "Link Existing Repository",
+                                modifier = Modifier.size(16.dp)
+                            )
 
-                        Spacer(modifier = Modifier.width(MaterialTheme.spacing.small))
+                            Spacer(modifier = Modifier.width(MaterialTheme.spacing.small))
 
-                        Text("Clone Repository")
+                            Text("Link Existing")
+                        }
+
+                        // Clone Repository button
+                        Button(
+                            onClick = { 
+                                if (!repo.isCloned) {
+                                    viewModel.cloneRepository(repo)
+                                }
+                            },
+                            enabled = !cloningRepoIds.contains(repo.id) && !repo.isCloned
+                        ) {
+                            Icon(
+                                Icons.Filled.Add,
+                                contentDescription = "Clone Repository",
+                                modifier = Modifier.size(16.dp)
+                            )
+
+                            Spacer(modifier = Modifier.width(MaterialTheme.spacing.small))
+
+                            Text("Clone Repository")
+                        }
                     }
                 }
             }
