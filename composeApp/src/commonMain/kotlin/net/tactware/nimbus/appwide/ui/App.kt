@@ -65,6 +65,7 @@ import net.tactware.nimbus.appwide.ui.main.MainViewModel
 import net.tactware.nimbus.appwide.ui.theme.AppTheme
 import net.tactware.nimbus.appwide.ui.theme.spacing
 import net.tactware.nimbus.appwide.ui.NotificationIcon
+import net.tactware.nimbus.appwide.ui.profile.ProfilePage
 import net.tactware.nimbus.projects.dal.entities.ProjectIdentifier
 import net.tactware.nimbus.projects.ui.ShowProjects
 import org.koin.compose.viewmodel.koinViewModel
@@ -90,6 +91,9 @@ fun App() {
 
         // State for navigation expansion
         var showNavItemTitles by remember { mutableStateOf(false) }
+
+        // State for showing profile page
+        var showProfilePage by remember { mutableStateOf(false) }
 
         LaunchedEffect(isNavExpanded) {
             if (isNavExpanded) {
@@ -271,7 +275,8 @@ fun App() {
                                     modifier = Modifier
                                         .size(40.dp)
                                         .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.primary),
+                                        .background(MaterialTheme.colorScheme.primary)
+                                        .clickable { showProfilePage = !showProfilePage },
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
@@ -284,24 +289,30 @@ fun App() {
                             }
                         }
 
-                        // Content based on selected nav item
+                        // Content based on selected nav item or profile page
                         // Track if we're navigating to Projects to add a new project
                         var showAddProject by remember { mutableStateOf(false) }
 
-                        when (selectedNavItem) {
-                            0 -> DashboardContent(state, onNavigateToProjects = { 
-                                showAddProject = true
-                                selectedNavItem = 1 
-                            })
-                            1 -> {
-                                ProjectsContent(state, showAddProject = showAddProject)
-                                // Reset after navigation
-                                if (showAddProject) {
-                                    showAddProject = false
+                        if (showProfilePage) {
+                            // Show profile page
+                            ProfilePage()
+                        } else {
+                            // Show regular content based on selected nav item
+                            when (selectedNavItem) {
+                                0 -> DashboardContent(state, onNavigateToProjects = { 
+                                    showAddProject = true
+                                    selectedNavItem = 1 
+                                })
+                                1 -> {
+                                    ProjectsContent(state, showAddProject = showAddProject)
+                                    // Reset after navigation
+                                    if (showAddProject) {
+                                        showAddProject = false
+                                    }
                                 }
+                                2 -> WorkItemsContent()
+                                3 -> SettingsContent()
                             }
-                            2 -> WorkItemsContent()
-                            3 -> SettingsContent()
                         }
                     }
                 }

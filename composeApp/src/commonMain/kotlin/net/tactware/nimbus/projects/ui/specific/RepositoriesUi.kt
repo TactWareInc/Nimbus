@@ -136,18 +136,11 @@ fun RepositoriesUi(projectIdentifier: ProjectIdentifier) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "ID",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.weight(0.1f)
-                    )
-                    Text(
                         "Name",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.weight(0.4f)
+                        modifier = Modifier.weight(0.5f)
                     )
                     Text(
                         "URL",
@@ -279,23 +272,6 @@ private fun RepositoryRow(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // ID with subtle background
-                Surface(
-                    modifier = Modifier.weight(0.1f),
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    shape = RoundedCornerShape(4.dp)
-                ) {
-                    Text(
-                        repo.id.toString(),
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(horizontal = MaterialTheme.spacing.small, vertical = MaterialTheme.spacing.tiny),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(MaterialTheme.spacing.small))
-
                 // Name with emphasis
                 Text(
                     repo.name,
@@ -303,7 +279,7 @@ private fun RepositoryRow(
                     fontWeight = FontWeight.Medium,
                     maxLines = if (expanded) Int.MAX_VALUE else 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(0.4f)
+                    modifier = Modifier.weight(0.5f)
                 )
 
                 Spacer(modifier = Modifier.width(MaterialTheme.spacing.small))

@@ -19,6 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import net.tactware.nimbus.projects.dal.entities.ProjectIdentifier
+import net.tactware.nimbus.projects.ui.specific.WorkItemPage
 
 /**
  * Main UI component for a specific project.
@@ -30,32 +31,45 @@ fun SpecificProjectUi(projectIdentifier: ProjectIdentifier) {
     var selectedTabIndex by remember { mutableStateOf(0) }
     val tabs = listOf("Repositories", "Work Items")
 
+    // State for showing the work item page
+    var showWorkItemPage by remember { mutableStateOf(false) }
+
     Scaffold { scaffoldPadding ->
         Column(modifier = Modifier.padding(scaffoldPadding)) {
-            // Tabs for repositories and work items
-            TabRow(selectedTabIndex = selectedTabIndex) {
-                tabs.forEachIndexed { index, title ->
-                    Tab(
-                        selected = selectedTabIndex == index,
-                        onClick = { selectedTabIndex = index },
-                        text = { Text(title) },
-                        icon = {
-                            if (index == 0) {
-                                Icon(Icons.Default.Build, contentDescription = "Repositories")
-                            } else {
-                                Icon(Icons.Default.PlayArrow, contentDescription = "Work Items")
+            // Show either the main UI or the work item page
+            if (showWorkItemPage) {
+                WorkItemPage(
+                    projectIdentifier = projectIdentifier,
+                    onNavigateBack = { showWorkItemPage = false }
+                )
+            } else {
+                // Tabs for repositories and work items
+                TabRow(selectedTabIndex = selectedTabIndex) {
+                    tabs.forEachIndexed { index, title ->
+                        Tab(
+                            selected = selectedTabIndex == index,
+                            onClick = { selectedTabIndex = index },
+                            text = { Text(title) },
+                            icon = {
+                                if (index == 0) {
+                                    Icon(Icons.Default.Build, contentDescription = "Repositories")
+                                } else {
+                                    Icon(Icons.Default.PlayArrow, contentDescription = "Work Items")
+                                }
                             }
-                        }
+                        )
+                    }
+                }
+
+                // Content based on selected tab
+                when (selectedTabIndex) {
+                    0 -> RepositoriesUi(projectIdentifier)
+                    1 -> WorkItemsUi(
+                        projectIdentifier = projectIdentifier,
+                        onNavigateToCreateWorkItem = { showWorkItemPage = true }
                     )
                 }
-            }
-
-            // Content based on selected tab
-            when (selectedTabIndex) {
-                0 -> RepositoriesUi(projectIdentifier)
-                1 -> WorkItemsUi(projectIdentifier)
             }
         }
     }
 }
-

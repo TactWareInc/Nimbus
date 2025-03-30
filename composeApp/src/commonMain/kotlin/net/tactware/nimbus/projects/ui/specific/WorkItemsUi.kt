@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -64,9 +65,15 @@ import org.koin.core.parameter.parametersOf
 
 /**
  * UI component for displaying work items for a specific project.
+ * 
+ * @param projectIdentifier The identifier of the project
+ * @param onNavigateToCreateWorkItem Optional callback for navigating to the create work item page
  */
 @Composable
-fun WorkItemsUi(projectIdentifier: ProjectIdentifier) {
+fun WorkItemsUi(
+    projectIdentifier: ProjectIdentifier,
+    onNavigateToCreateWorkItem: (() -> Unit)? = null
+) {
     val viewModel = koinViewModel<WorkItemsViewModel> { parametersOf(projectIdentifier) }
     val browserLauncher = koinInject<BrowserLauncher>()
 
@@ -97,6 +104,24 @@ fun WorkItemsUi(projectIdentifier: ProjectIdentifier) {
                 .padding(bottom = MaterialTheme.spacing.medium),
             shape = RoundedCornerShape(8.dp)
         )
+
+        // Create Work Item button (only shown if navigation callback is provided)
+        if (onNavigateToCreateWorkItem != null) {
+            Button(
+                onClick = { onNavigateToCreateWorkItem() },
+                modifier = Modifier
+                    .align(Alignment.End)
+                    .padding(bottom = MaterialTheme.spacing.medium)
+            ) {
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = "Create Work Item",
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(MaterialTheme.spacing.small))
+                Text("Create Work Item")
+            }
+        }
 
         // Loading indicator with improved styling
         if (isLoading) {
