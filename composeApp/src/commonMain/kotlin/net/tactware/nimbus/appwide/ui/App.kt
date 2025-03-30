@@ -342,21 +342,7 @@ fun SettingsContent() {
 
 @Composable
 fun WorkItemsContent() {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(
-            "Work Items",
-            style = MaterialTheme.typography.headlineMedium
-        )
-        Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
-        Text(
-            "Work items page is under construction",
-            style = MaterialTheme.typography.bodyLarge
-        )
-    }
+    net.tactware.nimbus.workitems.ui.AllWorkItemsUi()
 }
 
 
