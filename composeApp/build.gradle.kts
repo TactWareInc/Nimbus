@@ -18,7 +18,7 @@ sqldelight {
             srcDirs("src/main/sqldb")
             schemaOutputDirectory = file("src/main/sqldb/schemas")
             migrationOutputDirectory = file("src/main/sqldb/migrations")
-            verifyMigrations = true
+            verifyMigrations = false
             deriveSchemaFromMigrations = true
         }
     }

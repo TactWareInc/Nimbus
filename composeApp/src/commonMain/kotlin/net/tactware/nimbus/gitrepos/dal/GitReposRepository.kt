@@ -2,20 +2,12 @@ package net.tactware.nimbus.gitrepos.dal
 
 import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
-import net.tactware.nimbus.GitRepos
-import net.tactware.nimbus.Projects
+import migrations.net.tactware.nimbus.GitRepos
 import net.tactware.nimbus.appwide.dal.IDatabaseProvider
 import net.tactware.nimbus.db.NimbusDb
-import net.tactware.nimbus.projects.dal.entities.DevOpsServerOrService
-import net.tactware.nimbus.projects.dal.entities.Project
-import net.tactware.nimbus.projects.dal.entities.ProjectIdentifier
 import org.koin.core.annotation.Single
 import kotlin.uuid.Uuid
 
@@ -31,6 +23,8 @@ class GitReposRepository(provider: IDatabaseProvider<NimbusDb>) {
                 id = id,
                 name = name,
                 url = url,
+                isCloned = is_cloned,
+                clonePath = clone_path
             )
         }
     }
@@ -40,7 +34,9 @@ class GitReposRepository(provider: IDatabaseProvider<NimbusDb>) {
             if(!queries.checkIfProjectExistsByURL(gitUrl).executeAsOne()) {
                 queries.storeGitRepo(
                     name = gitRepoName,
-                    url = gitUrl
+                    url = gitUrl,
+                    is_cloned = false,
+                    clone_path = null
                 )
                 val gitRepoId = queries.lastRowInserted().executeAsOne()
                 joinQueries.storeProjectToGitRepo(projectId, gitRepoId)
@@ -56,5 +52,13 @@ class GitReposRepository(provider: IDatabaseProvider<NimbusDb>) {
 
     suspend fun checkIfRepoExists(gitUrl: String): Boolean {
         return queries.checkIfProjectExistsByURL(gitUrl).executeAsOne()
+    }
+
+    suspend fun updateCloneStatus(clonePath: String?, isCloned: Boolean, repoId : Long) {
+        queries.updateGitRepoCloneStatus(isCloned, clonePath, repoId)
+    }
+
+    suspend fun getReposByProjectIdList(projectId: Uuid): List<GitRepo> {
+        return queries.getAllGitReposForProject(projectId.toString()).executeAsList().map(mapper)
     }
 }

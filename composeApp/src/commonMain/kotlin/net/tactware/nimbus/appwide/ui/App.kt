@@ -1,4 +1,3 @@
-@file:OptIn(ExperimentalMaterial3ExpressiveApi::class)
 
 package net.tactware.nimbus.appwide.ui
 
@@ -41,7 +40,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -67,6 +65,7 @@ import net.tactware.nimbus.appwide.ui.main.MainViewModel
 import net.tactware.nimbus.appwide.ui.theme.AppTheme
 import net.tactware.nimbus.appwide.ui.theme.spacing
 import net.tactware.nimbus.appwide.ui.NotificationIcon
+import net.tactware.nimbus.appwide.ui.profile.ProfilePage
 import net.tactware.nimbus.projects.dal.entities.ProjectIdentifier
 import net.tactware.nimbus.projects.ui.ShowProjects
 import org.koin.compose.viewmodel.koinViewModel
@@ -93,31 +92,14 @@ fun App() {
         // State for navigation expansion
         var showNavItemTitles by remember { mutableStateOf(false) }
 
+        // State for showing profile page
+        var showProfilePage by remember { mutableStateOf(false) }
+
         LaunchedEffect(isNavExpanded) {
             if (isNavExpanded) {
                 delay(200)
             }
             showNavItemTitles = isNavExpanded
-        }
-
-        // Add some test notifications
-        LaunchedEffect(Unit) {
-            // Clear any existing notifications first
-            NotificationService.clearAllNotifications()
-
-            // Add test notifications
-            NotificationService.addNotification(
-                "Welcome to Nimbus",
-                "Thank you for using Nimbus. This is a test notification."
-            )
-            NotificationService.addNotification(
-                "New Project Created",
-                "Project 'Test Project' has been created successfully."
-            )
-            NotificationService.addNotification(
-                "System Update",
-                "A new system update is available. Please restart the application to apply the update."
-            )
         }
 
         // Navigation items
@@ -293,7 +275,8 @@ fun App() {
                                     modifier = Modifier
                                         .size(40.dp)
                                         .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.primary),
+                                        .background(MaterialTheme.colorScheme.primary)
+                                        .clickable { showProfilePage = !showProfilePage },
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
@@ -306,24 +289,30 @@ fun App() {
                             }
                         }
 
-                        // Content based on selected nav item
+                        // Content based on selected nav item or profile page
                         // Track if we're navigating to Projects to add a new project
                         var showAddProject by remember { mutableStateOf(false) }
 
-                        when (selectedNavItem) {
-                            0 -> DashboardContent(state, onNavigateToProjects = { 
-                                showAddProject = true
-                                selectedNavItem = 1 
-                            })
-                            1 -> {
-                                ProjectsContent(state, showAddProject = showAddProject)
-                                // Reset after navigation
-                                if (showAddProject) {
-                                    showAddProject = false
+                        if (showProfilePage) {
+                            // Show profile page
+                            ProfilePage()
+                        } else {
+                            // Show regular content based on selected nav item
+                            when (selectedNavItem) {
+                                0 -> DashboardContent(state, onNavigateToProjects = { 
+                                    showAddProject = true
+                                    selectedNavItem = 1 
+                                })
+                                1 -> {
+                                    ProjectsContent(state, showAddProject = showAddProject)
+                                    // Reset after navigation
+                                    if (showAddProject) {
+                                        showAddProject = false
+                                    }
                                 }
+                                2 -> WorkItemsContent()
+                                3 -> SettingsContent()
                             }
-                            2 -> WorkItemsContent()
-                            3 -> SettingsContent()
                         }
                     }
                 }

@@ -1,15 +1,13 @@
-CREATE TABLE GitRepos(
-id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-name TEXT NOT NULL,
-url TEXT NOT NULL
-);
+import kotlin.Boolean;
 
 storeGitRepo:
-INSERT OR REPLACE INTO GitRepos(name, url) VALUES (?, ?);
+INSERT OR REPLACE INTO GitRepos(name, url, is_cloned, clone_path) VALUES (?, ?, ?, ?);
+
+updateGitRepoCloneStatus:
+UPDATE GitRepos SET is_cloned = ?, clone_path = ? WHERE id = ?;
 
 checkIfProjectExistsByURL:
 SELECT EXISTS(SELECT 1 FROM GitRepos WHERE url = ?) AS result;
-
 
 getAllGitReposForProject:
 SELECT * FROM GitRepos WHERE id IN (SELECT ProjectsToGitRepos.git_repo_id FROM ProjectsToGitRepos WHERE project_id = ?);
