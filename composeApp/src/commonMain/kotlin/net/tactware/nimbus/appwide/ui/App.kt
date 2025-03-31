@@ -31,7 +31,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
@@ -60,11 +59,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
-import net.tactware.nimbus.appwide.NotificationService
 import net.tactware.nimbus.appwide.ui.main.MainViewModel
 import net.tactware.nimbus.appwide.ui.theme.AppTheme
 import net.tactware.nimbus.appwide.ui.theme.spacing
-import net.tactware.nimbus.appwide.ui.NotificationIcon
 import net.tactware.nimbus.appwide.ui.profile.ProfilePage
 import net.tactware.nimbus.appwide.ui.settings.SettingsContent
 import net.tactware.nimbus.projects.dal.entities.ProjectIdentifier
@@ -88,19 +85,28 @@ fun App() {
         var selectedNavItem by remember { mutableStateOf(0) }
 
         // State for navigation expansion
-        var isNavExpanded by remember { mutableStateOf(false) }
+        var causeNavigationToExpand by remember { mutableStateOf(false) }
 
         // State for navigation expansion
         var showNavItemTitles by remember { mutableStateOf(false) }
+        var expandColumn by remember { mutableStateOf(false) }
+
 
         // State for showing profile page
         var showProfilePage by remember { mutableStateOf(false) }
 
-        LaunchedEffect(isNavExpanded) {
-            if (isNavExpanded) {
+        LaunchedEffect(causeNavigationToExpand) {
+            if (causeNavigationToExpand) {
                 delay(200)
             }
-            showNavItemTitles = isNavExpanded
+            showNavItemTitles = causeNavigationToExpand
+        }
+
+        LaunchedEffect(causeNavigationToExpand) {
+            if (!causeNavigationToExpand) {
+                delay(200)
+            }
+            expandColumn = causeNavigationToExpand
         }
 
         // Navigation items
@@ -120,7 +126,7 @@ fun App() {
             ) {
                 // Left sidebar navigation - expandable/collapsible with animation
                 val navWidth by animateDpAsState(
-                    targetValue = if (isNavExpanded) 200.dp else 56.dp,
+                    targetValue = if (expandColumn) 200.dp else 56.dp,
                     animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
                     label = "navWidth"
                 )
@@ -215,19 +221,19 @@ fun App() {
                                         .size(36.dp)
                                         .clip(CircleShape)
                                         .background(MaterialTheme.colorScheme.secondary) // Different color
-                                        .clickable { isNavExpanded = !isNavExpanded },
+                                        .clickable { causeNavigationToExpand = !causeNavigationToExpand },
                                     contentAlignment = Alignment.Center
                                 ) {
                                     // Animate the rotation of the icon
                                     val rotation by animateFloatAsState(
-                                        targetValue = if (isNavExpanded) 0f else 180f,
+                                        targetValue = if (causeNavigationToExpand) 0f else 180f,
                                         animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
                                         label = "iconRotation"
                                     )
 
                                     Icon(
                                         Icons.Default.ArrowBack, // Always use ArrowBack, but rotate it
-                                        contentDescription = if (isNavExpanded) "Collapse Navigation" else "Expand Navigation",
+                                        contentDescription = if (causeNavigationToExpand) "Collapse Navigation" else "Expand Navigation",
                                         tint = MaterialTheme.colorScheme.onSecondary,
                                         modifier = Modifier.size(20.dp).rotate(rotation)
                                     )
@@ -327,7 +333,40 @@ fun App() {
 
 @Composable
 fun WorkItemsContent() {
-    net.tactware.nimbus.workitems.ui.AllWorkItemsUi()
+    // Get the first project to use for the WorkItemListDetailPage
+    val viewModel = koinViewModel<MainViewModel>()
+    val state = viewModel.uiState.collectAsState().value
+
+    when (state) {
+        is MainViewModel.UiState.LoadedProjects -> {
+            val projects = state.projects
+            if (projects.isNotEmpty()) {
+                // Use the first project for the WorkItemListDetailPage
+                net.tactware.nimbus.projects.ui.specific.WorkItemListDetailPage(
+                    projectIdentifier = projects.first(),
+                    onNavigateBack = { /* No-op, we're in the main navigation */ },
+                    onNavigateToCreateWorkItem = { /* Navigate to create work item page */ }
+                )
+            } else {
+                // No projects available
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("No projects available. Please add a project first.")
+                }
+            }
+        }
+        else -> {
+            // Loading or error state
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        }
+    }
 }
 
 

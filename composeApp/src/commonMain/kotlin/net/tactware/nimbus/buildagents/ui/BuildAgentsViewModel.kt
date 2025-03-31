@@ -56,7 +56,7 @@ class BuildAgentsViewModel(
                 val client = AzureDevOpsClient(project)
 
                 // Fetch build agents
-                val buildAgents = client.getBuildAgents()
+                val buildAgents = client.getAllBuildAgents()
 
                 // Map BuildAgentInfo to BuildAgent
                 val agents = buildAgents.map { agentInfo ->

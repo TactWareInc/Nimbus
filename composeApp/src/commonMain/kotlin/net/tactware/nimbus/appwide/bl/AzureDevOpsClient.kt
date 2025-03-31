@@ -24,6 +24,7 @@ import net.tactware.nimbus.buildagents.dal.BuildAgentInfo
 import net.tactware.nimbus.buildagents.dal.BuildAgentResponse
 import net.tactware.nimbus.projects.dal.entities.Project
 import net.tactware.nimbus.projects.dal.entities.WorkItem
+import org.koin.core.annotation.Factory
 
 /**
 * A client class for interacting with Azure DevOps services.
@@ -131,24 +132,38 @@ class AzureDevOpsClient(
 
     /**
      * Get build agents from the Azure DevOps instance.
+     * Searches for agents at both the project level and the Collection/Organizational level.
      * 
      * @return A list of BuildAgentInfo objects representing the build agents.
      */
-    suspend fun getBuildAgents(): List<BuildAgentInfo> {
+    suspend fun getAllBuildAgents(): List<BuildAgentInfo> {
+        val json = Json { ignoreUnknownKeys = true }
+        val allAgents = mutableListOf<BuildAgentInfo>()
+
         try {
-            // The default pool ID is 1 for the hosted pool
-            val poolId = 1
-            val url = "${project.orgOrCollectionUrl}/_apis/distributedtask/pools/$poolId/agents?api-version=$API_VERSION"
-            val response = get(url)
+            // 1) Get all pools
+            val poolsUrl = "${project.orgOrCollectionUrl}/_apis/distributedtask/pools?api-version=$API_VERSION"
+            val poolsResponse = get(poolsUrl)
+            val poolListResult = json.decodeFromString<PoolResponse>(poolsResponse)
 
-            val json = Json { ignoreUnknownKeys = true }
-            val result = json.decodeFromString<BuildAgentResponse>(response)
+            // 2) For each pool, get the agents
+            for (pool in poolListResult.value) {
+                try {
+                    val agentsUrl = "${project.orgOrCollectionUrl}/_apis/distributedtask/pools/${pool.id}/agents?api-version=$API_VERSION"
+                    val agentsResponse = get(agentsUrl)
+                    val agentsResult = json.decodeFromString<BuildAgentResponse>(agentsResponse)
 
-            return result.value
+                    allAgents.addAll(agentsResult.value)
+                } catch (e: Exception) {
+//                    println("Error fetching agents for pool ${pool.name} (ID=${pool.id}): ${e.message}")
+                }
+            }
         } catch (e: Exception) {
             println("Error fetching build agents: ${e.message}")
-            return emptyList()
         }
+
+        // Remove duplicates if necessary
+        return allAgents.distinctBy { it.id }
     }
 
     /**
@@ -280,6 +295,49 @@ class AzureDevOpsClient(
         } catch (e: Exception) {
             println("Error creating work item: ${e.message}")
             return null
+        }
+    }
+
+    /**
+     * Updates an existing work item in Azure DevOps.
+     *
+     * @param workItemId The ID of the work item to update
+     * @param state The new state of the work item (e.g., "New", "Active", "Resolved", "Closed")
+     * @param projectName Optional project name. If not provided, uses the project from the client.
+     * @return True if the update was successful, false otherwise
+     */
+    suspend fun updateWorkItem(
+        workItemId: Int,
+        state: String,
+        projectName: String? = null
+    ): Boolean {
+        try {
+            val targetProject = projectName ?: project.projectName
+
+            // Build patch document
+            val operations = buildList {
+                add(
+                    mapOf(
+                        "op" to "add",
+                        "path" to "/fields/System.State",
+                        "value" to state
+                    )
+                )
+            }
+
+            val response = client.post {
+                url("${project.orgOrCollectionUrl}/$targetProject/_apis/wit/workitems/$workItemId?api-version=$API_VERSION")
+                headers {
+                    append("Content-Type", "application/json-patch+json")
+                }
+                setBody(operations)
+            }
+
+            // Check HTTP status
+            return response.status.isSuccess()
+        } catch (e: Exception) {
+            println("Error updating work item: ${e.message}")
+            return false
         }
     }
 }
