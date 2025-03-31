@@ -21,8 +21,16 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.core.spring
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.Divider
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -37,6 +45,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,8 +53,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import net.tactware.nimbus.appwide.ui.BrowserLauncher
 import net.tactware.nimbus.appwide.ui.theme.spacing
+import net.tactware.nimbus.appwide.utils.HtmlUtils
 import net.tactware.nimbus.projects.dal.entities.WorkItem
 import net.tactware.nimbus.projects.ui.specific.WorkItemPage
 import org.koin.compose.koinInject
@@ -211,7 +222,8 @@ fun AllWorkItemsUi() {
                 onClick = { showWorkItemPage = true },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(MaterialTheme.spacing.large)
+                    .padding(MaterialTheme.spacing.large),
+                containerColor = MaterialTheme.colorScheme.secondary
             ) {
                 Icon(
                     Icons.Default.Add,
@@ -224,9 +236,15 @@ fun AllWorkItemsUi() {
 
 /**
  * A simplified work item row that displays basic information.
+ * Can be expanded to show more details.
  */
 @Composable
 private fun SimpleWorkItemRow(workItem: WorkItem) {
+    // State for tracking if this work item is expanded
+    var expanded by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+    val browserLauncher = koinInject<BrowserLauncher>()
+
     // Determine state color based on work item state
     val stateColor = when (workItem.state.lowercase()) {
         "active", "in progress" -> MaterialTheme.colorScheme.primary
@@ -238,60 +256,148 @@ private fun SimpleWorkItemRow(workItem: WorkItem) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { /* Open work item details */ },
+            .clickable { expanded = !expanded },
         shape = RoundedCornerShape(8.dp)
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(MaterialTheme.spacing.medium),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(MaterialTheme.spacing.medium)
         ) {
-            // ID
-            Text(
-                workItem.id.toString(),
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.weight(0.1f)
-            )
-
-            // Title
-            Text(
-                workItem.title,
-                style = MaterialTheme.typography.bodyLarge,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(0.5f)
-            )
-
-            // State with colored indicator
             Row(
-                modifier = Modifier.weight(0.2f),
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(10.dp)
-                        .clip(CircleShape)
-                        .background(stateColor)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
+                // ID
                 Text(
-                    workItem.state,
+                    workItem.id.toString(),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.weight(0.1f)
+                )
+
+                // Title
+                Text(
+                    workItem.title,
+                    style = MaterialTheme.typography.bodyLarge,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(0.5f)
+                )
+
+                // State with colored indicator
+                Row(
+                    modifier = Modifier.weight(0.2f),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .clip(CircleShape)
+                            .background(stateColor)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        workItem.state,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                // Assigned To
+                Text(
+                    workItem.assignedTo ?: "Unassigned",
                     style = MaterialTheme.typography.bodyMedium,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(0.2f)
                 )
             }
 
-            // Assigned To
-            Text(
-                workItem.assignedTo ?: "Unassigned",
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(0.2f)
-            )
+            // Expanded content with description and type
+            AnimatedVisibility(
+                visible = expanded,
+                enter = fadeIn(animationSpec = tween(300)) + expandVertically(
+                    animationSpec = spring(
+                        dampingRatio = 0.7f,
+                        stiffness = 300f
+                    )
+                ),
+                exit = fadeOut(animationSpec = tween(300)) + shrinkVertically(
+                    animationSpec = spring(
+                        dampingRatio = 0.7f,
+                        stiffness = 300f
+                    )
+                )
+            ) {
+                Column {
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+
+                    Divider(color = MaterialTheme.colorScheme.outlineVariant)
+
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+
+                    // Type information if available
+                    if (workItem.type != null) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "Type:",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(end = MaterialTheme.spacing.small)
+                            )
+
+                            Text(
+                                workItem.type,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+                    }
+
+                    // Description
+                    if (workItem.description != null && workItem.description.isNotBlank()) {
+                        Text(
+                            "Description",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(bottom = MaterialTheme.spacing.small)
+                        )
+
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Text(
+                                HtmlUtils.htmlToText(workItem.description),
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(MaterialTheme.spacing.medium)
+                            )
+                        }
+                    } else {
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Text(
+                                "No description available",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                modifier = Modifier.padding(MaterialTheme.spacing.medium)
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }

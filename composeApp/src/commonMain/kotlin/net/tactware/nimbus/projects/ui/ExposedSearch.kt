@@ -309,6 +309,10 @@ internal fun DropdownMenuContent(
                 this.alpha = alpha
                 transformOrigin = transformOriginState.value
             },
+        colors = androidx.compose.material3.CardDefaults.cardColors(
+            containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface,
+            contentColor = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
+        )
     ) {
         Column(
             modifier =

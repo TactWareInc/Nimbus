@@ -11,10 +11,17 @@ import io.ktor.client.request.headers
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.request.url
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
+import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import net.tactware.nimbus.appwide.bl.specificworkitem.WorkItemDetails
 import net.tactware.nimbus.appwide.bl.specificworkitem.WorkItemResult
+import net.tactware.nimbus.buildagents.dal.BuildAgentInfo
+import net.tactware.nimbus.buildagents.dal.BuildAgentResponse
 import net.tactware.nimbus.projects.dal.entities.Project
 import net.tactware.nimbus.projects.dal.entities.WorkItem
 
@@ -123,6 +130,28 @@ class AzureDevOpsClient(
     }
 
     /**
+     * Get build agents from the Azure DevOps instance.
+     * 
+     * @return A list of BuildAgentInfo objects representing the build agents.
+     */
+    suspend fun getBuildAgents(): List<BuildAgentInfo> {
+        try {
+            // The default pool ID is 1 for the hosted pool
+            val poolId = 1
+            val url = "${project.orgOrCollectionUrl}/_apis/distributedtask/pools/$poolId/agents?api-version=$API_VERSION"
+            val response = get(url)
+
+            val json = Json { ignoreUnknownKeys = true }
+            val result = json.decodeFromString<BuildAgentResponse>(response)
+
+            return result.value
+        } catch (e: Exception) {
+            println("Error fetching build agents: ${e.message}")
+            return emptyList()
+        }
+    }
+
+    /**
      * Retrieves work items by their IDs from Azure DevOps services.
      *
      * @param workItemIds A list of integers representing the work item IDs.
@@ -170,5 +199,87 @@ class AzureDevOpsClient(
         }
 
         return workItems
+    }
+
+    /**
+     * Creates a new work item in Azure DevOps.
+     *
+     * @param workItemType The type of work item to create (e.g., "Bug", "Task", "User Story")
+     * @param title The title of the work item
+     * @param description The description of the work item
+     * @param projectName Optional project name. If not provided, uses the project from the client.
+     * @param customFields Optional map of custom field names to values
+     * @return The ID of the created work item, or null if creation failed
+     */
+    suspend fun createWorkItem(
+        workItemType: String,
+        title: String,
+        description: String,
+        projectName: String? = null,
+        customFields: Map<String, String> = emptyMap()
+    ): Int? {
+        try {
+            val targetProject = projectName ?: project.projectName
+
+            // Build patch document
+            val operations = buildList {
+                add(
+                    mapOf(
+                        "op" to "add",
+                        "path" to "/fields/System.Title",
+                        "value" to title
+                    )
+                )
+                if (description.isNotBlank()) {
+                    add(
+                        mapOf(
+                            "op" to "add",
+                            "path" to "/fields/System.Description",
+                            "value" to description
+                        )
+                    )
+                }
+
+                // Add custom fields
+                for ((fieldName, fieldValue) in customFields) {
+                    if (fieldValue.isNotBlank()) {
+                        add(
+                            mapOf(
+                                "op" to "add",
+                                "path" to "/fields/$fieldName",
+                                "value" to fieldValue
+                            )
+                        )
+                    }
+                }
+            }
+
+            val response = client.post {
+                url("${project.orgOrCollectionUrl}/$targetProject/_apis/wit/workitems/\$$workItemType?api-version=$API_VERSION")
+                headers {
+                    append("Content-Type", "application/json-patch+json")
+                    // Make sure your Authorization header is set if needed
+                    // append("Authorization", "Bearer $myPAT")
+                }
+                setBody(operations)
+            }
+
+            // Check HTTP status first
+            if (!response.status.isSuccess()) {
+                val errorBody = response.bodyAsText()
+                println("Error creating work item: HTTP ${response.status.value} - $errorBody")
+                return null
+            }
+
+            // Parse JSON if status is successful
+            val responseBody = response.body<String>()
+            val json = Json { ignoreUnknownKeys = true }
+            val jsonObject = json.decodeFromString<JsonObject>(responseBody)
+            return jsonObject["id"]?.jsonPrimitive?.content?.toIntOrNull()
+
+        } catch (e: Exception) {
+            println("Error creating work item: ${e.message}")
+            return null
+        }
     }
 }

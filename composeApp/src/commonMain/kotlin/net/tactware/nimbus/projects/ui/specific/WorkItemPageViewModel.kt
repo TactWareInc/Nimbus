@@ -12,7 +12,10 @@ import net.tactware.nimbus.gitrepos.bl.GetReposByProjectIdUseCase
 import net.tactware.nimbus.gitrepos.dal.GitRepo
 import net.tactware.nimbus.projects.bl.GetAllProjectNameUseCase
 import net.tactware.nimbus.projects.bl.GetProjectByIdUseCase
+import net.tactware.nimbus.projects.dal.customfields.CustomField
+import net.tactware.nimbus.projects.dal.customfields.CustomFieldStore
 import net.tactware.nimbus.projects.dal.entities.ProjectIdentifier
+import net.tactware.nimbus.projects.ui.customfields.CustomFieldValue
 import org.eclipse.jgit.api.Git
 import org.koin.core.annotation.Factory
 import org.koin.core.annotation.InjectedParam
@@ -78,6 +81,10 @@ class WorkItemPageViewModel(
 
     private val _workItemId = MutableStateFlow(0)
     val workItemId: StateFlow<Int> = _workItemId.asStateFlow()
+
+    // Custom fields
+    private val _customFieldValues = MutableStateFlow<List<CustomFieldValue>>(emptyList())
+    val customFieldValues: StateFlow<List<CustomFieldValue>> = _customFieldValues.asStateFlow()
 
     // Azure DevOps client
     private var azureDevOpsClient: AzureDevOpsClient? = null
@@ -190,6 +197,47 @@ class WorkItemPageViewModel(
     }
 
     /**
+     * Updates a custom field value.
+     *
+     * @param customFieldValue The custom field value to update
+     */
+    fun updateCustomFieldValue(customFieldValue: CustomFieldValue) {
+        val currentValues = _customFieldValues.value
+        val index = currentValues.indexOfFirst { it.field.name == customFieldValue.field.name }
+
+        if (index != -1) {
+            // Update existing value
+            val updatedValues = currentValues.toMutableList()
+            updatedValues[index] = customFieldValue
+            _customFieldValues.value = updatedValues
+        } else {
+            // Add new value
+            _customFieldValues.value = currentValues + customFieldValue
+        }
+    }
+
+    /**
+     * Checks if all required custom fields have values.
+     *
+     * @return True if all required custom fields have values, false otherwise
+     */
+    private fun areRequiredCustomFieldsValid(): Boolean {
+        // Get custom fields for the selected project
+        val projectId = _selectedProject.value?.id
+        val customFields = CustomFieldStore.getCustomFieldsForProject(projectId)
+        val requiredFields = customFields.filter { it.isRequired }
+
+        if (requiredFields.isEmpty()) {
+            return true
+        }
+
+        val currentValues = _customFieldValues.value
+        return requiredFields.all { requiredField ->
+            currentValues.any { it.field.name == requiredField.name && it.value.isNotBlank() }
+        }
+    }
+
+    /**
      * Selects a repository for branch creation.
      */
     fun selectRepo(repo: GitRepo) {
@@ -205,8 +253,8 @@ class WorkItemPageViewModel(
 
     /**
      * Creates a work item in Azure DevOps.
-     * This is a placeholder implementation that simulates creating a work item.
-     * In a real implementation, this would call the Azure DevOps API to create a work item.
+     * This method calls the Azure DevOps API to create a work item with the specified title, description, and type.
+     * It also includes any custom fields that have been defined.
      */
     fun createWorkItem() {
         if (_title.value.isBlank()) {
@@ -217,29 +265,66 @@ class WorkItemPageViewModel(
             return
         }
 
+        // Check if all required custom fields have values
+        if (!areRequiredCustomFieldsValid()) {
+            NotificationService.addNotification(
+                title = "Error",
+                message = "Please fill in all required custom fields"
+            )
+            return
+        }
+
+        // Check if Azure DevOps client is initialized
+        if (azureDevOpsClient == null) {
+            NotificationService.addNotification(
+                title = "Error",
+                message = "Azure DevOps client is not initialized. Please select a project first."
+            )
+            return
+        }
+
         _isCreatingWorkItem.value = true
 
         viewModelScope.launch {
             try {
-                // Simulate API call delay
-                kotlinx.coroutines.delay(1000)
+                // Call the Azure DevOps API to create a work item
+                val workItemTypeString = _workItemType.value.displayName
 
-                // In a real implementation, this would call the Azure DevOps API to create a work item
-                // For now, we'll just simulate a successful creation with a random ID
-                val newWorkItemId = (1000..9999).random()
-                _workItemId.value = newWorkItemId
-                _workItemCreated.value = true
+                // Convert custom field values to a map
+                val customFieldsMap = _customFieldValues.value.associate { 
+                    it.field.name to it.value 
+                }
 
-                // Get the work item type name for the notification
-                val workItemTypeName = _workItemType.value.displayName
-
-                // Include project name in notification if a project is selected
-                val projectInfo = _selectedProject.value?.let { " in project ${it.name}" } ?: ""
-
-                NotificationService.addNotification(
-                    title = "Success",
-                    message = "$workItemTypeName #$newWorkItemId created successfully$projectInfo"
+                val newWorkItemId = azureDevOpsClient?.createWorkItem(
+                    workItemType = workItemTypeString,
+                    title = _title.value,
+                    description = _description.value,
+                    projectName = _selectedProject.value?.name,
+                    customFields = customFieldsMap
                 )
+
+                if (newWorkItemId != null) {
+                    // Work item created successfully
+                    _workItemId.value = newWorkItemId
+                    _workItemCreated.value = true
+
+                    // Get the work item type name for the notification
+                    val workItemTypeName = _workItemType.value.displayName
+
+                    // Include project name in notification if a project is selected
+                    val projectInfo = _selectedProject.value?.let { " in project ${it.name}" } ?: ""
+
+                    NotificationService.addNotification(
+                        title = "Success",
+                        message = "$workItemTypeName #$newWorkItemId created successfully$projectInfo"
+                    )
+                } else {
+                    // Failed to create work item
+                    NotificationService.addNotification(
+                        title = "Error",
+                        message = "Failed to create work item. Please check your connection and try again."
+                    )
+                }
             } catch (e: Exception) {
                 NotificationService.addNotification(
                     title = "Error",

@@ -20,6 +20,9 @@ fun DesktopTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
+    // Store the current theme mode for access from non-composable contexts
+    net.tactware.nimbus.appwide.ui.theme.currentIsDarkTheme = darkTheme
+
     // Define desktop-specific color schemes using the same colors as the common theme
     val desktopLightScheme = lightColorScheme(
         primary = primaryLight,

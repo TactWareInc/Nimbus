@@ -250,11 +250,25 @@ val unspecified_scheme = ColorFamily(
     Color.Unspecified, Color.Unspecified, Color.Unspecified, Color.Unspecified
 )
 
+// Global variable to store the current theme mode
+internal var currentIsDarkTheme = false
+
+/**
+ * Returns whether the app is currently in dark theme mode.
+ * This can be called from non-composable contexts.
+ */
+fun isAppInDarkTheme(): Boolean {
+    return currentIsDarkTheme
+}
+
 @Composable
 fun AppTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
+    // Store the current theme mode for access from non-composable contexts
+    currentIsDarkTheme = darkTheme
+
     val colorScheme = when {
         darkTheme -> darkScheme
         else -> lightScheme
@@ -269,4 +283,3 @@ fun AppTheme(
         )
     }
 }
-

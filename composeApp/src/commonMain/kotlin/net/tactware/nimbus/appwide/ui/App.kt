@@ -66,6 +66,7 @@ import net.tactware.nimbus.appwide.ui.theme.AppTheme
 import net.tactware.nimbus.appwide.ui.theme.spacing
 import net.tactware.nimbus.appwide.ui.NotificationIcon
 import net.tactware.nimbus.appwide.ui.profile.ProfilePage
+import net.tactware.nimbus.appwide.ui.settings.SettingsContent
 import net.tactware.nimbus.projects.dal.entities.ProjectIdentifier
 import net.tactware.nimbus.projects.ui.ShowProjects
 import org.koin.compose.viewmodel.koinViewModel
@@ -107,6 +108,7 @@ fun App() {
             NavItem("Dashboard", Icons.Default.Home, "Dashboard"),
             NavItem("Projects", Icons.Default.Build, "Projects"),
             NavItem("Work Items", Icons.Default.PlayArrow, "Work Items"),
+            NavItem("Git Branches", Icons.Default.Search, "Git Branches"),
             NavItem("Settings", Icons.Default.Settings, "Settings")
         )
 
@@ -311,7 +313,8 @@ fun App() {
                                     }
                                 }
                                 2 -> WorkItemsContent()
-                                3 -> SettingsContent()
+                                3 -> net.tactware.nimbus.gitrepos.ui.GitBranchesUi()
+                                4 -> SettingsContent()
                             }
                         }
                     }
@@ -321,24 +324,6 @@ fun App() {
     }
 }
 
-@Composable
-fun SettingsContent() {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(
-            "Settings",
-            style = MaterialTheme.typography.headlineMedium
-        )
-        Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
-        Text(
-            "Settings page is under construction",
-            style = MaterialTheme.typography.bodyLarge
-        )
-    }
-}
 
 @Composable
 fun WorkItemsContent() {

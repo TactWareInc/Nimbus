@@ -16,6 +16,8 @@ import androidx.compose.ui.unit.dp
 import net.tactware.nimbus.appwide.ui.theme.spacing
 import net.tactware.nimbus.gitrepos.dal.GitRepo
 import net.tactware.nimbus.projects.dal.entities.ProjectIdentifier
+import net.tactware.nimbus.projects.ui.ExposedSearchMenu
+import net.tactware.nimbus.projects.ui.customfields.CustomFieldsForm
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -44,6 +46,7 @@ fun WorkItemPage(
     val workItemType by viewModel.workItemType.collectAsState()
     val selectedProject by viewModel.selectedProject.collectAsState()
     val availableProjects by viewModel.availableProjects.collectAsState()
+    val customFieldValues by viewModel.customFieldValues.collectAsState()
 
     Scaffold(
         topBar = {
@@ -94,77 +97,59 @@ fun WorkItemPage(
                     // Project selection dropdown
                     if (availableProjects.isNotEmpty()) {
                         var projectDropdownExpanded by remember { mutableStateOf(false) }
+                        var projectSearchText by remember { mutableStateOf("") }
 
-                        OutlinedTextField(
-                            value = selectedProject?.name ?: "Select a project (optional)",
-                            onValueChange = { },
-                            label = { Text("Project") },
-                            modifier = Modifier.fillMaxWidth(),
-                            enabled = !workItemCreated,
-                            readOnly = true,
-                            trailingIcon = {
-                                IconButton(onClick = { projectDropdownExpanded = true }) {
-                                    Icon(
-                                        Icons.Default.Add,
-                                        contentDescription = "Select Project"
-                                    )
-                                }
-                            }
-                        )
-
-                        DropdownMenu(
+                        ExposedSearchMenu(
                             expanded = projectDropdownExpanded,
-                            onDismissRequest = { projectDropdownExpanded = false },
-                            modifier = Modifier.fillMaxWidth(0.9f)
-                        ) {
-                            // Add "None" option
-                            DropdownMenuItem(
-                                text = { Text("None (No project)") },
-                                onClick = {
-                                    viewModel.updateSelectedProject(null)
-                                    projectDropdownExpanded = false
-                                }
-                            )
-
-                            // Add all available projects
-                            availableProjects.forEach { project ->
+                            onExpandedChange = { projectDropdownExpanded = it },
+                            items = listOf(null) + availableProjects,
+                            itemContent = { project ->
                                 DropdownMenuItem(
-                                    text = { Text(project.name) },
+                                    text = { Text(project?.name ?: "None (No project)") },
                                     onClick = {
                                         viewModel.updateSelectedProject(project)
                                         projectDropdownExpanded = false
                                     }
                                 )
+                            },
+                            searchContent = {
+                                OutlinedTextField(
+                                    value = projectSearchText,
+                                    onValueChange = { projectSearchText = it },
+                                    label = { Text("Search Projects") },
+                                    modifier = Modifier.fillMaxWidth().padding(8.dp)
+                                )
+                            },
+                            displayContent = { modifier ->
+                                OutlinedTextField(
+                                    value = selectedProject?.name ?: "Select a project (optional)",
+                                    onValueChange = { },
+                                    label = { Text("Project") },
+                                    modifier = Modifier.fillMaxWidth().menuAnchor(),
+                                    enabled = !workItemCreated,
+                                    readOnly = true,
+                                    trailingIcon = {
+                                        IconButton(onClick = { projectDropdownExpanded = true }) {
+                                            Icon(
+                                                Icons.Default.Add,
+                                                contentDescription = "Select Project"
+                                            )
+                                        }
+                                    }
+                                )
                             }
-                        }
+                        )
                     }
 
                     // Work item type selection
                     var typeDropdownExpanded by remember { mutableStateOf(false) }
+                    var typeSearchText by remember { mutableStateOf("") }
 
-                    OutlinedTextField(
-                        value = workItemType.displayName,
-                        onValueChange = { },
-                        label = { Text("Work Item Type") },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !workItemCreated,
-                        readOnly = true,
-                        trailingIcon = {
-                            IconButton(onClick = { typeDropdownExpanded = true }) {
-                                Icon(
-                                    Icons.Default.Add,
-                                    contentDescription = "Select Type"
-                                )
-                            }
-                        }
-                    )
-
-                    DropdownMenu(
+                    ExposedSearchMenu(
                         expanded = typeDropdownExpanded,
-                        onDismissRequest = { typeDropdownExpanded = false },
-                        modifier = Modifier.fillMaxWidth(0.9f)
-                    ) {
-                        WorkItemType.values().forEach { type ->
+                        onExpandedChange = { typeDropdownExpanded = it },
+                        items = WorkItemType.values().toList(),
+                        itemContent = { type ->
                             DropdownMenuItem(
                                 text = { Text(type.displayName) },
                                 onClick = {
@@ -172,8 +157,34 @@ fun WorkItemPage(
                                     typeDropdownExpanded = false
                                 }
                             )
+                        },
+                        searchContent = {
+                            OutlinedTextField(
+                                value = typeSearchText,
+                                onValueChange = { typeSearchText = it },
+                                label = { Text("Search Types") },
+                                modifier = Modifier.fillMaxWidth().padding(8.dp)
+                            )
+                        },
+                        displayContent = { modifier ->
+                            OutlinedTextField(
+                                value = workItemType.displayName,
+                                onValueChange = { },
+                                label = { Text("Work Item Type") },
+                                modifier = Modifier.fillMaxWidth().menuAnchor(),
+                                enabled = !workItemCreated,
+                                readOnly = true,
+                                trailingIcon = {
+                                    IconButton(onClick = { typeDropdownExpanded = true }) {
+                                        Icon(
+                                            Icons.Default.Add,
+                                            contentDescription = "Select Type"
+                                        )
+                                    }
+                                }
+                            )
                         }
-                    }
+                    )
 
                     OutlinedTextField(
                         value = title,
@@ -193,6 +204,13 @@ fun WorkItemPage(
                         enabled = !workItemCreated
                     )
 
+                    // Custom fields
+                    CustomFieldsForm(
+                        customFieldValues = customFieldValues,
+                        onCustomFieldValueChanged = { viewModel.updateCustomFieldValue(it) },
+                        enabled = !workItemCreated
+                    )
+
                     if (!workItemCreated) {
                         Button(
                             onClick = { viewModel.createWorkItem() },
@@ -206,7 +224,7 @@ fun WorkItemPage(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                             }
-                            Text("Create ${workItemType.displayName}")
+                            Text("Create ticket")
                         }
                     } else {
                         Surface(
