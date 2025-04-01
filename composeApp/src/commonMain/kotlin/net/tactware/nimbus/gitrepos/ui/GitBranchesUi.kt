@@ -22,12 +22,16 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.mutableStateOf
@@ -40,6 +44,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -228,60 +233,51 @@ fun BranchItem(
     // State for tracking if this branch item is expanded
     var expanded by remember { mutableStateOf(false) }
 
-    Card(
+    ElevatedCard(
         modifier = Modifier
-            .fillMaxWidth(),
+            .fillMaxWidth()
+            .clickable { expanded = !expanded },
+        elevation = CardDefaults.elevatedCardElevation(
+            defaultElevation = 2.dp,
+            pressedElevation = 4.dp
+        ),
         shape = RoundedCornerShape(8.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small)
+                .padding(MaterialTheme.spacing.medium)
         ) {
-            // Main row with branch name and buttons
+            // Main row with branch name and indicators
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Branch name and remote indicator
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(
-                        branch.name,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (branch.isRemote) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                    )
+                // Branch type icon (remote or local)
+                Icon(
+                    imageVector = if (branch.isRemote) Icons.Default.Search else Icons.Default.Home,
+                    contentDescription = if (branch.isRemote) "Remote Branch" else "Local Branch",
+                    tint = if (branch.isRemote) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(24.dp)
+                )
 
-                    if (branch.isRemote) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            "(remote)",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
-                        )
-                    }
-                }
+                Spacer(modifier = Modifier.width(12.dp))
+
+                // Branch name
+                Text(
+                    branch.name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f)
+                )
 
                 // Current branch indicator
                 if (branch.isCurrent) {
                     Icon(
                         Icons.Default.Check,
                         contentDescription = "Current Branch",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-
-                // Expand/collapse button
-                IconButton(
-                    onClick = { expanded = !expanded },
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        imageVector = if (expanded) Icons.Default.Clear else Icons.Default.Add,
-                        contentDescription = if (expanded) "Collapse" else "Expand",
                         tint = MaterialTheme.colorScheme.primary
                     )
                 }
@@ -303,59 +299,63 @@ fun BranchItem(
                     )
                 )
             ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(top = MaterialTheme.spacing.small)
-                ) {
+                Column {
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+
                     Divider(color = MaterialTheme.colorScheme.outlineVariant)
 
-                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
 
                     // Action buttons
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
+                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
                     ) {
                         // Checkout button
-                        IconButton(
+                        Button(
                             onClick = { 
                                 onClick()
                                 expanded = false  // Collapse after action
-                            }
+                            },
+                            modifier = Modifier.weight(1f)
                         ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.PlayArrow,
                                     contentDescription = "Checkout Branch",
-                                    tint = MaterialTheme.colorScheme.primary
+                                    tint = MaterialTheme.colorScheme.onPrimary
                                 )
                                 Text(
                                     "Checkout",
-                                    style = MaterialTheme.typography.bodySmall
+                                    style = MaterialTheme.typography.bodyMedium
                                 )
                             }
                         }
 
                         // Delete locally button (only for non-current branches)
                         if (!branch.isCurrent) {
-                            IconButton(
+                            Button(
                                 onClick = { 
                                     onDeleteLocally()
                                     expanded = false  // Collapse after action
-                                }
+                                },
+                                modifier = Modifier.weight(1f)
                             ) {
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Delete,
                                         contentDescription = "Delete Branch Locally",
-                                        tint = MaterialTheme.colorScheme.error
+                                        tint = MaterialTheme.colorScheme.onError
                                     )
                                     Text(
                                         "Delete",
-                                        style = MaterialTheme.typography.bodySmall
+                                        style = MaterialTheme.typography.bodyMedium
                                     )
                                 }
                             }
@@ -375,54 +375,115 @@ fun BranchWithRepoItem(
     branchWithRepo: BranchWithRepo,
     onClick: () -> Unit
 ) {
-    Card(
+    // State for tracking if this branch item is expanded
+    var expanded by remember { mutableStateOf(false) }
+
+    ElevatedCard(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .clickable { expanded = !expanded },
+        elevation = CardDefaults.elevatedCardElevation(
+            defaultElevation = 2.dp,
+            pressedElevation = 4.dp
+        ),
         shape = RoundedCornerShape(8.dp)
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+                .padding(MaterialTheme.spacing.medium)
         ) {
-            Column(
-                modifier = Modifier.weight(1f)
+            // Main row with branch name and indicators
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
+                // Branch type icon (remote or local)
+                Icon(
+                    imageVector = if (branchWithRepo.branch.isRemote) Icons.Default.Search else Icons.Default.Home,
+                    contentDescription = if (branchWithRepo.branch.isRemote) "Remote Branch" else "Local Branch",
+                    tint = if (branchWithRepo.branch.isRemote) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(24.dp)
+                )
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column(
+                    modifier = Modifier.weight(1f)
                 ) {
                     Text(
                         branchWithRepo.branch.name,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (branchWithRepo.branch.isRemote) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
 
-                    if (branchWithRepo.branch.isRemote) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            "(remote)",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
-                        )
-                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Text(
+                        "Repository: ${branchWithRepo.repo.name}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
                 }
 
-                Text(
-                    "Repository: ${branchWithRepo.repo.name}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                )
+                if (branchWithRepo.branch.isCurrent) {
+                    Icon(
+                        Icons.Default.Check,
+                        contentDescription = "Current Branch",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
 
-            if (branchWithRepo.branch.isCurrent) {
-                Icon(
-                    Icons.Default.Check,
-                    contentDescription = "Current Branch",
-                    tint = MaterialTheme.colorScheme.primary
+            // Expanded content with action buttons
+            AnimatedVisibility(
+                visible = expanded,
+                enter = fadeIn(animationSpec = tween(300)) + expandVertically(
+                    animationSpec = spring(
+                        dampingRatio = 0.7f,
+                        stiffness = 300f
+                    )
+                ),
+                exit = fadeOut(animationSpec = tween(300)) + shrinkVertically(
+                    animationSpec = spring(
+                        dampingRatio = 0.7f,
+                        stiffness = 300f
+                    )
                 )
+            ) {
+                Column {
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+
+                    Divider(color = MaterialTheme.colorScheme.outlineVariant)
+
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+
+                    // Checkout button
+                    Button(
+                        onClick = { 
+                            onClick()
+                            expanded = false  // Collapse after action
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.PlayArrow,
+                                contentDescription = "Checkout Branch",
+                                tint = MaterialTheme.colorScheme.onPrimary
+                            )
+                            Text(
+                                "Checkout",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                }
             }
         }
     }

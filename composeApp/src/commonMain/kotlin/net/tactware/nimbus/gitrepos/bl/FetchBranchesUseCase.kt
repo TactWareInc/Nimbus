@@ -46,16 +46,16 @@ class FetchBranchesUseCase(
                     )
                 }
 
-            // For each repository, fetch its branches if it's cloned
+            // For each repository, fetch its branches if its file location is known (cloned or linked)
             repos.forEach { repo ->
-                if (repo.isCloned && !repo.clonePath.isNullOrBlank()) {
+                if (!repo.clonePath.isNullOrBlank()) {
                     val branches = fetchBranchesFromRepo(repo)
                     gitBranchesRepository.updateBranches(repo.id, branches)
                 }
             }
 
-            // Only return cloned repositories
-            return repos.filter { it.isCloned && !it.clonePath.isNullOrBlank() }
+            // Only return repositories where file location is known
+            return repos.filter { !it.clonePath.isNullOrBlank() }
         } catch (e: Exception) {
             // Log the error
             println("Error fetching branches for project: ${e.message}")
@@ -96,8 +96,8 @@ class FetchBranchesUseCase(
             // Find the repository with the specified ID
             val repo = repos.find { it.id == repoId } ?: return null
 
-            // Only proceed if the repository is cloned
-            if (!repo.isCloned || repo.clonePath.isNullOrBlank()) {
+            // Only proceed if the repository's file location is known
+            if (repo.clonePath.isNullOrBlank()) {
                 return null
             }
 
