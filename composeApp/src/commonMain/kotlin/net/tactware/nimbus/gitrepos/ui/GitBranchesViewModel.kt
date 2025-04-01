@@ -43,6 +43,9 @@ class GitBranchesViewModel(
     private val _allBranches = MutableStateFlow<List<BranchWithRepo>>(emptyList())
     val allBranches: StateFlow<List<BranchWithRepo>> = _allBranches.asStateFlow()
 
+    // Current project ID
+    private var currentProjectId: String = ""
+
     /**
      * Fetches branches for a project.
      *
@@ -52,7 +55,35 @@ class GitBranchesViewModel(
         viewModelScope.launch {
             _uiState.value = UiState.Loading
             try {
+                // Store the current project ID
+                currentProjectId = projectId
+
                 val repos = fetchBranchesUseCase.fetchBranchesForProject(projectId)
+                if (repos.isEmpty()) {
+                    _uiState.value = UiState.Empty
+                } else {
+                    _uiState.value = UiState.Success(repos)
+                    // Select the first repository by default
+                    selectRepository(repos.first())
+
+                    // Fetch branches from all repositories
+                    fetchAllBranches(repos)
+                }
+            } catch (e: Exception) {
+                _uiState.value = UiState.Error("Failed to fetch branches: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Fetches branches for all projects in the database.
+     * This allows viewing branches across all projects, not just the current one.
+     */
+    fun fetchBranchesForAllProjects() {
+        viewModelScope.launch {
+            _uiState.value = UiState.Loading
+            try {
+                val repos = fetchBranchesUseCase.fetchBranchesForAllProjects()
                 if (repos.isEmpty()) {
                     _uiState.value = UiState.Empty
                 } else {
@@ -97,6 +128,12 @@ class GitBranchesViewModel(
     fun selectRepository(repo: GitRepo) {
         viewModelScope.launch {
             _selectedRepo.value = repo
+
+            // Fetch branches for the repository if we have a current project ID
+            if (currentProjectId.isNotEmpty()) {
+                fetchBranchesUseCase.fetchBranchesForRepo(repo.id, currentProjectId)
+            }
+
             // Observe branches for the selected repository
             gitBranchesRepository.getBranchesByRepoId(repo.id).collect { branches ->
                 _branches.value = branches

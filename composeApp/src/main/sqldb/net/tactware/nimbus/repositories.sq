@@ -12,6 +12,9 @@ SELECT EXISTS(SELECT 1 FROM GitRepos WHERE url = ?) AS result;
 getAllGitReposForProject:
 SELECT * FROM GitRepos WHERE id IN (SELECT ProjectsToGitRepos.git_repo_id FROM ProjectsToGitRepos WHERE project_id = ?);
 
+getAllGitRepos:
+SELECT * FROM GitRepos;
+
 getGitRepoById:
 SELECT * FROM GitRepos WHERE id = ?;
 

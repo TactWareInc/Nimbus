@@ -14,20 +14,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import app.cash.paging.compose.collectAsLazyPagingItems
 import kotlinx.coroutines.launch
-// AzureDevOpsClient and BrowserLauncher are now handled by the ViewModel
 import net.tactware.nimbus.appwide.ui.theme.spacing
 import net.tactware.nimbus.projects.dal.entities.ProjectIdentifier
 import net.tactware.nimbus.projects.dal.entities.WorkItem
-// No longer using koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.expandHorizontally
-import androidx.compose.animation.shrinkHorizontally
+
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.ui.draw.alpha
@@ -53,9 +46,30 @@ fun WorkItemListDetailPage(
     val searchResults by viewModel.searchResults.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val project by viewModel.project.collectAsState()
+    val selectedWorkItemId by viewModel.selectedWorkItemId.collectAsState()
 
     // State for the selected work item
     var selectedWorkItem by remember { mutableStateOf<WorkItem?>(null) }
+
+    // Effect to update selectedWorkItem when selectedWorkItemId changes
+    LaunchedEffect(selectedWorkItemId) {
+        if (selectedWorkItemId != null) {
+            // If we have a selected ID but no selected work item, try to find it
+            if (selectedWorkItem == null || selectedWorkItem?.id != selectedWorkItemId) {
+                // First check in search results if in search mode
+                if (isSearchMode) {
+                    searchResults.find { it.id == selectedWorkItemId }?.let {
+                        selectedWorkItem = it
+                    }
+                }
+                // If not found or not in search mode, we'll rely on the LazyColumn to update it
+                // when the item becomes visible
+            }
+        } else {
+            // Clear selection if ID is null
+            selectedWorkItem = null
+        }
+    }
 
     // State for the edit state dialog
     var showEditStateDialog by remember { mutableStateOf(false) }
@@ -121,8 +135,11 @@ fun WorkItemListDetailPage(
                                 items(searchResults) { workItem ->
                                     WorkItemListItem(
                                         workItem = workItem,
-                                        isSelected = selectedWorkItem?.id == workItem.id,
-                                        onClick = { selectedWorkItem = workItem }
+                                        isSelected = selectedWorkItemId == workItem.id,
+                                        onClick = { 
+                                            selectedWorkItem = workItem
+                                            viewModel.updateSelectedWorkItemId(workItem.id)
+                                        }
                                     )
                                 }
                             }
@@ -135,8 +152,11 @@ fun WorkItemListDetailPage(
                                 workItems[index]?.let { workItem ->
                                     WorkItemListItem(
                                         workItem = workItem,
-                                        isSelected = selectedWorkItem?.id == workItem.id,
-                                        onClick = { selectedWorkItem = workItem }
+                                        isSelected = selectedWorkItemId == workItem.id,
+                                        onClick = { 
+                                            selectedWorkItem = workItem
+                                            viewModel.updateSelectedWorkItemId(workItem.id)
+                                        }
                                     )
                                 }
                             }
@@ -190,7 +210,10 @@ fun WorkItemListDetailPage(
                     val success = viewModel.updateWorkItemState(selectedWorkItem!!.id, newState)
                     if (success) {
                         // Update the selected work item with the new state
-                        selectedWorkItem = selectedWorkItem!!.copy(state = newState)
+                        val updatedWorkItem = selectedWorkItem!!.copy(state = newState)
+                        selectedWorkItem = updatedWorkItem
+
+                        // No need to update the selectedWorkItemId as it remains the same
                     }
                     showEditStateDialog = false
                 }

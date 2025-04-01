@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -20,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -64,6 +66,7 @@ import org.koin.compose.viewmodel.koinViewModel
 
 /**
  * UI component for displaying all work items across projects with filtering capabilities.
+ * Allows selecting a work item to view its details in a master-detail layout.
  */
 @Composable
 fun AllWorkItemsUi() {
@@ -72,6 +75,9 @@ fun AllWorkItemsUi() {
 
     // State for showing the work item page
     var showWorkItemPage by remember { mutableStateOf(false) }
+
+    // State for the selected work item
+    var selectedWorkItem by remember { mutableStateOf<WorkItem?>(null) }
 
     // Collect states from ViewModel
     val workItems = viewModel.workItems.collectAsState().value
@@ -90,131 +96,174 @@ fun AllWorkItemsUi() {
         )
     } else {
         Box(modifier = Modifier.fillMaxSize()) {
-            Column(modifier = Modifier.fillMaxSize().padding(MaterialTheme.spacing.medium)) {
-                // Header with title and create button
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = MaterialTheme.spacing.medium),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        "Work Items",
-                        style = MaterialTheme.typography.headlineMedium
-                    )
-
-                    Button(
-                        onClick = { showWorkItemPage = true }
-                    ) {
-                        Icon(
-                            Icons.Default.Add,
-                            contentDescription = "Create Work Item",
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Create Work Item")
-                    }
-                }
-
-                // Search field
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { viewModel.updateSearchQuery(it) },
-                    label = { Text("Search Work Items") },
-                    leadingIcon = { 
-                        Icon(
-                            Icons.Filled.Search, 
-                            contentDescription = "Search",
-                            tint = MaterialTheme.colorScheme.primary
-                        ) 
-                    },
-                    trailingIcon = {
-                        if (searchQuery.isNotEmpty()) {
-                            IconButton(onClick = { viewModel.updateSearchQuery("") }) {
-                                Icon(
-                                    Icons.Filled.Clear,
-                                    contentDescription = "Clear search",
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                        }
-                    },
+            Row(modifier = Modifier.fillMaxSize()) {
+                // Left panel - Filter and list
+                Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = MaterialTheme.spacing.medium),
-                    shape = RoundedCornerShape(8.dp)
-                )
-
-                // Filter chips for states
-                if (availableStates.isNotEmpty()) {
-                    Text(
-                        "Filter by State",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = MaterialTheme.spacing.small)
-                    )
-
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .padding(MaterialTheme.spacing.medium)
+                ) {
+                    // Header with title and create button
                     Row(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = MaterialTheme.spacing.medium),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "Work Items",
+                            style = MaterialTheme.typography.headlineMedium
+                        )
+
+                        Button(
+                            onClick = { showWorkItemPage = true }
+                        ) {
+                            Icon(
+                                Icons.Default.Add,
+                                contentDescription = "Create Work Item",
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Create Work Item")
+                        }
+                    }
+
+                    // Search field
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { viewModel.updateSearchQuery(it) },
+                        label = { Text("Search Work Items") },
+                        leadingIcon = { 
+                            Icon(
+                                Icons.Filled.Search, 
+                                contentDescription = "Search",
+                                tint = MaterialTheme.colorScheme.primary
+                            ) 
+                        },
+                        trailingIcon = {
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { viewModel.updateSearchQuery("") }) {
+                                    Icon(
+                                        Icons.Filled.Clear,
+                                        contentDescription = "Clear search",
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(bottom = MaterialTheme.spacing.medium),
-                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
-                    ) {
-                        availableStates.take(5).forEach { state ->
-                            val filter = WorkItemFilter.State(state)
-                            val selected = activeFilters.contains(filter)
+                        shape = RoundedCornerShape(8.dp)
+                    )
 
-                            FilterChip(
-                                selected = selected,
-                                onClick = { viewModel.toggleFilter(filter) },
-                                label = { Text(state) }
+                    // Filter chips for states
+                    if (availableStates.isNotEmpty()) {
+                        Text(
+                            "Filter by State",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(bottom = MaterialTheme.spacing.small)
+                        )
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = MaterialTheme.spacing.medium),
+                            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+                        ) {
+                            availableStates.take(5).forEach { state ->
+                                val filter = WorkItemFilter.State(state)
+                                val selected = activeFilters.contains(filter)
+
+                                FilterChip(
+                                    selected = selected,
+                                    onClick = { viewModel.toggleFilter(filter) },
+                                    label = { Text(state) }
+                                )
+                            }
+                        }
+                    }
+
+                    // Clear filters button
+                    if (activeFilters.isNotEmpty()) {
+                        TextButton(onClick = { viewModel.clearFilters() }) {
+                            Text("Clear Filters")
+                        }
+                    }
+
+                    // Loading indicator
+                    if (isLoading) {
+                        Text(
+                            "Loading work items...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(MaterialTheme.spacing.medium)
+                        )
+                    }
+
+                    // Work items list
+                    if (filteredWorkItems.isEmpty() && !isLoading) {
+                        Text(
+                            if (activeFilters.isEmpty() && searchQuery.isEmpty()) 
+                                "No work items found" 
+                            else 
+                                "No work items match the current filters",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(MaterialTheme.spacing.medium)
+                        )
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+                        ) {
+                            items(filteredWorkItems) { workItem ->
+                                SimpleWorkItemRow(
+                                    workItem = workItem,
+                                    isSelected = selectedWorkItem?.id == workItem.id,
+                                    onClick = { selectedWorkItem = workItem }
+                                )
+                            }
+                        }
+                    }
+
+                    // Status bar
+                    Text(
+                        "Showing ${filteredWorkItems.size} of ${workItems.size} work items",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(MaterialTheme.spacing.small)
+                    )
+                }
+
+                // Divider between panels
+                Divider(
+                    modifier = Modifier
+                        .width(1.dp)
+                        .fillMaxHeight()
+                )
+
+                // Right panel - Details
+                Box(
+                    modifier = Modifier
+                        .weight(2f)
+                        .fillMaxHeight()
+                        .padding(MaterialTheme.spacing.medium)
+                ) {
+                    // Display work item details if a work item is selected
+                    selectedWorkItem?.let { workItem ->
+                        WorkItemDetailPanel(workItem = workItem)
+                    } ?: run {
+                        // Show a message when no work item is selected
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                "Select a work item to view details",
+                                style = MaterialTheme.typography.bodyLarge
                             )
                         }
                     }
                 }
-
-                // Clear filters button
-                if (activeFilters.isNotEmpty()) {
-                    TextButton(onClick = { viewModel.clearFilters() }) {
-                        Text("Clear Filters")
-                    }
-                }
-
-                // Loading indicator
-                if (isLoading) {
-                    Text(
-                        "Loading work items...",
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(MaterialTheme.spacing.medium)
-                    )
-                }
-
-                // Work items list
-                if (filteredWorkItems.isEmpty() && !isLoading) {
-                    Text(
-                        if (activeFilters.isEmpty() && searchQuery.isEmpty()) 
-                            "No work items found" 
-                        else 
-                            "No work items match the current filters",
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(MaterialTheme.spacing.medium)
-                    )
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
-                    ) {
-                        items(filteredWorkItems) { workItem ->
-                            SimpleWorkItemRow(workItem)
-                        }
-                    }
-                }
-
-                // Status bar
-                Text(
-                    "Showing ${filteredWorkItems.size} of ${workItems.size} work items",
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(MaterialTheme.spacing.small)
-                )
             }
 
             // Floating action button for creating work items (alternative to the button in the header)
@@ -236,10 +285,14 @@ fun AllWorkItemsUi() {
 
 /**
  * A simplified work item row that displays basic information.
- * Can be expanded to show more details.
+ * Can be expanded to show more details or selected to view in the details panel.
  */
 @Composable
-private fun SimpleWorkItemRow(workItem: WorkItem) {
+private fun SimpleWorkItemRow(
+    workItem: WorkItem,
+    isSelected: Boolean = false,
+    onClick: () -> Unit = {}
+) {
     // State for tracking if this work item is expanded
     var expanded by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
@@ -253,15 +306,23 @@ private fun SimpleWorkItemRow(workItem: WorkItem) {
         else -> MaterialTheme.colorScheme.outline
     }
 
+    // Background color based on selection state
+    val backgroundColor = if (isSelected) {
+        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+    } else {
+        MaterialTheme.colorScheme.surface
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { expanded = !expanded },
+            .clickable { onClick() },
         shape = RoundedCornerShape(8.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .background(backgroundColor)
                 .padding(MaterialTheme.spacing.medium)
         ) {
             Row(
@@ -399,5 +460,122 @@ private fun SimpleWorkItemRow(workItem: WorkItem) {
                 }
             }
         }
+    }
+}
+
+/**
+ * Detail panel for displaying work item details.
+ */
+@Composable
+private fun WorkItemDetailPanel(workItem: WorkItem) {
+    val coroutineScope = rememberCoroutineScope()
+    val browserLauncher = koinInject<BrowserLauncher>()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(MaterialTheme.spacing.medium)
+    ) {
+        // Header with title and ID
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "#${workItem.id} - ${workItem.title}",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+
+        // State and type information
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
+        ) {
+            // State
+            Column {
+                Text(
+                    "State",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    workItem.state,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            // Type if available
+            if (workItem.type != null) {
+                Column {
+                    Text(
+                        "Type",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        workItem.type,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+
+        // Assigned to
+        Column {
+            Text(
+                "Assigned To",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                workItem.assignedTo ?: "Unassigned",
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium
+            )
+        }
+
+        Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
+
+        // Description
+        Text(
+            "Description",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Bold
+        )
+
+        Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+            shape = RoundedCornerShape(8.dp)
+        ) {
+            if (workItem.description != null && workItem.description.isNotBlank()) {
+                Text(
+                    HtmlUtils.htmlToText(workItem.description),
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(MaterialTheme.spacing.medium)
+                )
+            } else {
+                Text(
+                    "No description available",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    modifier = Modifier.padding(MaterialTheme.spacing.medium)
+                )
+            }
+        }
+
+        // No "Open in Browser" button since WorkItem doesn't have a URL property
     }
 }

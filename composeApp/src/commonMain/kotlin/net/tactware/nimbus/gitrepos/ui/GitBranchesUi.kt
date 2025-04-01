@@ -18,12 +18,28 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -48,17 +64,17 @@ fun GitBranchesUi() {
     val selectedRepo by viewModel.selectedRepo.collectAsState()
     val branches by viewModel.branches.collectAsState()
 
-    // Fetch branches for the first project (hardcoded for now)
-    // In a real implementation, you would get the project ID from the navigation or a parameter
+    // Fetch branches for all projects in the database
+    // This allows viewing branches across all projects, not just a single one
     LaunchedEffect(Unit) {
-        viewModel.fetchBranchesForProject("project1")
+        viewModel.fetchBranchesForAllProjects()
     }
 
     Column(
         modifier = Modifier.fillMaxSize().padding(MaterialTheme.spacing.medium)
     ) {
         Text(
-            "Git Branch Management",
+            "Git Branch Management (All Projects)",
             style = MaterialTheme.typography.headlineMedium,
             modifier = Modifier.padding(bottom = MaterialTheme.spacing.medium)
         )
@@ -94,7 +110,8 @@ fun GitBranchesUi() {
                             Divider()
 
                             LazyColumn(
-                                modifier = Modifier.fillMaxSize().padding(top = MaterialTheme.spacing.small)
+                                modifier = Modifier.fillMaxSize().padding(top = MaterialTheme.spacing.small),
+                                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
                             ) {
                                 items(repos) { repo ->
                                     RepoItem(
@@ -115,30 +132,29 @@ fun GitBranchesUi() {
                             modifier = Modifier.fillMaxSize().padding(MaterialTheme.spacing.small)
                         ) {
                             Text(
-                                "All Branches",
+                                "Branches for ${selectedRepo?.name ?: "Selected Repository"}",
                                 style = MaterialTheme.typography.titleMedium,
                                 modifier = Modifier.padding(bottom = MaterialTheme.spacing.small)
                             )
 
                             Divider()
 
-                            val allBranches by viewModel.allBranches.collectAsState()
-
-                            if (allBranches.isEmpty()) {
+                            if (branches.isEmpty()) {
                                 Box(
                                     modifier = Modifier.fillMaxSize(),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Text("No branches found")
+                                    Text("No branches found for this repository")
                                 }
                             } else {
                                 LazyColumn(
-                                    modifier = Modifier.fillMaxSize().padding(top = MaterialTheme.spacing.small)
+                                    modifier = Modifier.fillMaxSize().padding(top = MaterialTheme.spacing.small),
+                                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
                                 ) {
-                                    items(allBranches) { branchWithRepo ->
-                                        BranchWithRepoItem(
-                                            branchWithRepo = branchWithRepo,
-                                            onClick = { viewModel.switchBranchWithRepo(branchWithRepo) }
+                                    items(branches) { branch ->
+                                        BranchItem(
+                                            branch = branch,
+                                            onClick = { viewModel.switchBranch(branch.name) }
                                         )
                                     }
                                 }
@@ -176,20 +192,27 @@ fun RepoItem(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
-    Row(
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(4.dp))
-            .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface)
-            .clickable(onClick = onClick)
-            .padding(MaterialTheme.spacing.small),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            repo.name,
-            style = MaterialTheme.typography.bodyMedium,
-            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
         )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                repo.name,
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+            )
+        }
     }
 }
 
@@ -199,28 +222,147 @@ fun RepoItem(
 @Composable
 fun BranchItem(
     branch: GitBranch,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onDeleteLocally: () -> Unit = {}
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(4.dp))
-            .clickable(onClick = onClick)
-            .padding(MaterialTheme.spacing.small),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(
-            branch.name,
-            style = MaterialTheme.typography.bodyMedium
-        )
+    // State for tracking if this branch item is expanded
+    var expanded by remember { mutableStateOf(false) }
 
-        if (branch.isCurrent) {
-            Icon(
-                Icons.Default.Check,
-                contentDescription = "Current Branch",
-                tint = MaterialTheme.colorScheme.primary
-            )
+    Card(
+        modifier = Modifier
+            .fillMaxWidth(),
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small)
+        ) {
+            // Main row with branch name and buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                // Branch name and remote indicator
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        branch.name,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (branch.isRemote) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                    )
+
+                    if (branch.isRemote) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "(remote)",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                        )
+                    }
+                }
+
+                // Current branch indicator
+                if (branch.isCurrent) {
+                    Icon(
+                        Icons.Default.Check,
+                        contentDescription = "Current Branch",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+
+                // Expand/collapse button
+                IconButton(
+                    onClick = { expanded = !expanded },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = if (expanded) Icons.Default.Clear else Icons.Default.Add,
+                        contentDescription = if (expanded) "Collapse" else "Expand",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+
+            // Expanded content with action buttons
+            AnimatedVisibility(
+                visible = expanded,
+                enter = fadeIn(animationSpec = tween(300)) + expandVertically(
+                    animationSpec = spring(
+                        dampingRatio = 0.7f,
+                        stiffness = 300f
+                    )
+                ),
+                exit = fadeOut(animationSpec = tween(300)) + shrinkVertically(
+                    animationSpec = spring(
+                        dampingRatio = 0.7f,
+                        stiffness = 300f
+                    )
+                )
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(top = MaterialTheme.spacing.small)
+                ) {
+                    Divider(color = MaterialTheme.colorScheme.outlineVariant)
+
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+
+                    // Action buttons
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        // Checkout button
+                        IconButton(
+                            onClick = { 
+                                onClick()
+                                expanded = false  // Collapse after action
+                            }
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.PlayArrow,
+                                    contentDescription = "Checkout Branch",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    "Checkout",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        }
+
+                        // Delete locally button (only for non-current branches)
+                        if (!branch.isCurrent) {
+                            IconButton(
+                                onClick = { 
+                                    onDeleteLocally()
+                                    expanded = false  // Collapse after action
+                                }
+                            ) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = "Delete Branch Locally",
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                    Text(
+                                        "Delete",
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -233,36 +375,55 @@ fun BranchWithRepoItem(
     branchWithRepo: BranchWithRepo,
     onClick: () -> Unit
 ) {
-    Row(
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(4.dp))
-            .clickable(onClick = onClick)
-            .padding(MaterialTheme.spacing.small),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(8.dp)
     ) {
-        Column(
-            modifier = Modifier.weight(1f)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(
-                branchWithRepo.branch.name,
-                style = MaterialTheme.typography.bodyMedium
-            )
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        branchWithRepo.branch.name,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (branchWithRepo.branch.isRemote) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                    )
 
-            Text(
-                "Repository: ${branchWithRepo.repo.name}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-            )
-        }
+                    if (branchWithRepo.branch.isRemote) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "(remote)",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                        )
+                    }
+                }
 
-        if (branchWithRepo.branch.isCurrent) {
-            Icon(
-                Icons.Default.Check,
-                contentDescription = "Current Branch",
-                tint = MaterialTheme.colorScheme.primary
-            )
+                Text(
+                    "Repository: ${branchWithRepo.repo.name}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+            }
+
+            if (branchWithRepo.branch.isCurrent) {
+                Icon(
+                    Icons.Default.Check,
+                    contentDescription = "Current Branch",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
         }
     }
 }

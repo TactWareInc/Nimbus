@@ -1,0 +1,34 @@
+import kotlin.Boolean;
+
+-- Store or update a build agent
+storeBuildAgent:
+INSERT OR REPLACE INTO BuildAgents(id, name, status, enabled, capabilities, version, os_description, project_id, last_updated)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+-- Get all build agents for a project
+getBuildAgentsForProject:
+SELECT * FROM BuildAgents WHERE project_id = ? ORDER BY name;
+
+-- Get a build agent by ID
+getBuildAgentById:
+SELECT * FROM BuildAgents WHERE id = ?;
+
+-- Get build agents by status
+getBuildAgentsByStatus:
+SELECT * FROM BuildAgents WHERE status = ? AND project_id = ? ORDER BY name;
+
+-- Delete a build agent
+deleteBuildAgent:
+DELETE FROM BuildAgents WHERE id = ?;
+
+-- Delete all build agents for a project
+deleteBuildAgentsForProject:
+DELETE FROM BuildAgents WHERE project_id = ?;
+
+-- Get the last known status of a build agent
+getBuildAgentStatus:
+SELECT id, status, last_updated FROM BuildAgents WHERE id = ?;
+
+-- Get all build agents
+getAllBuildAgents:
+SELECT * FROM BuildAgents ORDER BY name;

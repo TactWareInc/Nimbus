@@ -60,6 +60,10 @@ class ProjectWorkItemsViewModel(
     private val _project = MutableStateFlow<Project?>(null)
     val project = _project.asStateFlow()
 
+    // Selected work item ID
+    private val _selectedWorkItemId = MutableStateFlow<Int?>(null)
+    val selectedWorkItemId = _selectedWorkItemId.asStateFlow()
+
     // Debounce job for search
     private var searchJob: Job? = null
 
@@ -169,5 +173,14 @@ class ProjectWorkItemsViewModel(
      */
     suspend fun updateWorkItemState(workItemId: Int, newState: String): Boolean {
         return updateWorkItemStateUseCase(projectIdentifier, workItemId, newState)
+    }
+
+    /**
+     * Updates the selected work item ID.
+     * 
+     * @param workItemId The ID of the selected work item, or null to clear the selection
+     */
+    fun updateSelectedWorkItemId(workItemId: Int?) {
+        _selectedWorkItemId.value = workItemId
     }
 }

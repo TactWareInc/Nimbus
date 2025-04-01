@@ -25,7 +25,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import net.tactware.nimbus.appwide.ui.theme.spacing
-import net.tactware.nimbus.buildagents.ui.BuildAgentsUi
 import net.tactware.nimbus.projects.ui.customfields.CustomFieldsManagerUi
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -133,13 +132,6 @@ fun SettingsContent() {
                                         // Custom Fields Manager
                                         CustomFieldsManagerUi()
                                     }
-                                }
-                            }
-                            SettingsCategory.BuildAgentsSettings -> {
-                                Card(
-                                    modifier = Modifier.fillMaxSize()
-                                ) {
-                                    BuildAgentsUi()
                                 }
                             }
                         }

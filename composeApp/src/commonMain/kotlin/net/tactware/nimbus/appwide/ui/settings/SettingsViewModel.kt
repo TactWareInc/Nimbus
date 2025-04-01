@@ -12,7 +12,6 @@ import org.koin.core.annotation.Factory
  */
 sealed class SettingsCategory(val title: String) {
     object WorkItemSettings : SettingsCategory("Work Item Settings")
-    object BuildAgentsSettings : SettingsCategory("Build Agents")
     // Add more settings categories here as needed
     // For example:
     // object GeneralSettings : SettingsCategory("General Settings")
@@ -58,6 +57,6 @@ class SettingsViewModel : ViewModel() {
     }
 
     companion object {
-        val allCategories = listOf(SettingsCategory.WorkItemSettings, SettingsCategory.BuildAgentsSettings)
+        val allCategories = listOf(SettingsCategory.WorkItemSettings)
     }
 }

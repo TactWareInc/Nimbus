@@ -66,6 +66,9 @@ import net.tactware.nimbus.appwide.ui.profile.ProfilePage
 import net.tactware.nimbus.appwide.ui.settings.SettingsContent
 import net.tactware.nimbus.projects.dal.entities.ProjectIdentifier
 import net.tactware.nimbus.projects.ui.ShowProjects
+
+import net.tactware.nimbus.projects.dal.ProjectsRepository
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
 // Data class for navigation items
@@ -115,6 +118,7 @@ fun App() {
             NavItem("Projects", Icons.Default.Build, "Projects"),
             NavItem("Work Items", Icons.Default.PlayArrow, "Work Items"),
             NavItem("Git Branches", Icons.Default.Search, "Git Branches"),
+            NavItem("Build Agents", Icons.Default.Build, "Build Agents"),
             NavItem("Settings", Icons.Default.Settings, "Settings")
         )
 
@@ -320,7 +324,8 @@ fun App() {
                                 }
                                 2 -> WorkItemsContent()
                                 3 -> net.tactware.nimbus.gitrepos.ui.GitBranchesUi()
-                                4 -> SettingsContent()
+                                4 -> net.tactware.nimbus.buildagents.ui.BuildAgentsUi()
+                                5 -> SettingsContent()
                             }
                         }
                     }
@@ -337,16 +342,115 @@ fun WorkItemsContent() {
     val viewModel = koinViewModel<MainViewModel>()
     val state = viewModel.uiState.collectAsState().value
 
+    // State for view mode (true = list detail mode, false = filter mode)
+    var isListDetailMode by remember { mutableStateOf(true) }
+
     when (state) {
         is MainViewModel.UiState.LoadedProjects -> {
             val projects = state.projects
             if (projects.isNotEmpty()) {
-                // Use the first project for the WorkItemListDetailPage
-                net.tactware.nimbus.projects.ui.specific.WorkItemListDetailPage(
-                    projectIdentifier = projects.first(),
-                    onNavigateBack = { /* No-op, we're in the main navigation */ },
-                    onNavigateToCreateWorkItem = { /* Navigate to create work item page */ }
-                )
+                Column(modifier = Modifier.fillMaxSize()) {
+                    // Toggle button row
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "View Mode:",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(end = MaterialTheme.spacing.small)
+                        )
+
+                        // Filter mode button
+                        Surface(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp, 0.dp, 0.dp, 8.dp))
+                                .clickable { isListDetailMode = false },
+                            color = if (!isListDetailMode) 
+                                MaterialTheme.colorScheme.primaryContainer 
+                            else 
+                                MaterialTheme.colorScheme.surface
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.Search,
+                                    contentDescription = "Filter Mode",
+                                    tint = if (!isListDetailMode) 
+                                        MaterialTheme.colorScheme.onPrimaryContainer 
+                                    else 
+                                        MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    "Filter",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = if (!isListDetailMode) 
+                                        MaterialTheme.colorScheme.onPrimaryContainer 
+                                    else 
+                                        MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+
+                        // List detail mode button
+                        Surface(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(0.dp, 8.dp, 8.dp, 0.dp))
+                                .clickable { isListDetailMode = true },
+                            color = if (isListDetailMode) 
+                                MaterialTheme.colorScheme.primaryContainer 
+                            else 
+                                MaterialTheme.colorScheme.surface
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.PlayArrow,
+                                    contentDescription = "List Detail Mode",
+                                    tint = if (isListDetailMode) 
+                                        MaterialTheme.colorScheme.onPrimaryContainer 
+                                    else 
+                                        MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    "Details",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = if (isListDetailMode) 
+                                        MaterialTheme.colorScheme.onPrimaryContainer 
+                                    else 
+                                        MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    }
+
+                    // Content based on selected mode
+                    Box(modifier = Modifier.weight(1f)) {
+                        if (isListDetailMode) {
+                            // List detail mode
+                            net.tactware.nimbus.projects.ui.specific.WorkItemListDetailPage(
+                                projectIdentifier = projects.first(),
+                                onNavigateBack = { /* No-op, we're in the main navigation */ },
+                                onNavigateToCreateWorkItem = { /* Navigate to create work item page */ }
+                            )
+                        } else {
+                            // Filter mode
+                            net.tactware.nimbus.projects.ui.specific.WorkItemsUi(
+                                projectIdentifier = projects.first(),
+                                onNavigateToCreateWorkItem = { /* Navigate to create work item page */ }
+                            )
+                        }
+                    }
+                }
             } else {
                 // No projects available
                 Box(
