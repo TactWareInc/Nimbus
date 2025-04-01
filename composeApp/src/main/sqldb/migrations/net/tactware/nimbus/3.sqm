@@ -1,0 +1,18 @@
+import kotlin.Boolean;
+
+-- Create BuildAgents table
+CREATE TABLE IF NOT EXISTS BuildAgents(
+    id INTEGER PRIMARY KEY NOT NULL,
+    name TEXT NOT NULL,
+    status TEXT NOT NULL,
+    enabled INTEGER AS Boolean NOT NULL,
+    capabilities TEXT,
+    version TEXT,
+    os_description TEXT,
+    project_id TEXT NOT NULL,
+    last_updated INTEGER NOT NULL,
+    FOREIGN KEY (project_id) REFERENCES Projects(id) ON DELETE CASCADE
+);
+
+-- Create index on project_id for faster lookups
+CREATE INDEX IF NOT EXISTS idx_buildagents_project_id ON BuildAgents(project_id);

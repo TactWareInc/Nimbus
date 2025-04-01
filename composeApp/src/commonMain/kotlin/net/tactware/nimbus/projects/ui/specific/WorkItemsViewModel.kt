@@ -12,9 +12,11 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import net.tactware.nimbus.appwide.ui.BrowserLauncher
 import net.tactware.nimbus.projects.bl.GetProjectByIdUseCase
 import net.tactware.nimbus.projects.bl.GetWorkItemsPagingDataUseCase
 import net.tactware.nimbus.projects.bl.SearchWorkItemsUseCase
+import net.tactware.nimbus.projects.bl.UpdateWorkItemStateUseCase
 import net.tactware.nimbus.projects.dal.entities.Project
 import net.tactware.nimbus.projects.dal.entities.ProjectIdentifier
 import net.tactware.nimbus.projects.dal.entities.WorkItem
@@ -22,15 +24,18 @@ import org.koin.core.annotation.Factory
 import org.koin.core.annotation.InjectedParam
 
 /**
- * ViewModel for displaying work items with pagination and search support.
+ * ViewModel for displaying work items for a specific project with pagination and search support.
  */
 @Factory
-class WorkItemsViewModel(
+class ProjectWorkItemsViewModel(
     getWorkItemsPagingDataUseCase: GetWorkItemsPagingDataUseCase,
     private val searchWorkItemsUseCase: SearchWorkItemsUseCase,
     private val getProjectByIdUseCase: GetProjectByIdUseCase,
+    private val browserLauncher: BrowserLauncher,
+    private val updateWorkItemStateUseCase: UpdateWorkItemStateUseCase,
     @InjectedParam private val projectIdentifier: ProjectIdentifier
 ) : ViewModel() {
+
 
     // Work items for search results
     private val _searchResults = MutableStateFlow<List<WorkItem>>(emptyList())
@@ -55,6 +60,10 @@ class WorkItemsViewModel(
     private val _project = MutableStateFlow<Project?>(null)
     val project = _project.asStateFlow()
 
+    // Selected work item ID
+    private val _selectedWorkItemId = MutableStateFlow<Int?>(null)
+    val selectedWorkItemId = _selectedWorkItemId.asStateFlow()
+
     // Debounce job for search
     private var searchJob: Job? = null
 
@@ -72,6 +81,7 @@ class WorkItemsViewModel(
     private fun loadProject() {
         viewModelScope.launch {
             val projectDetails = getProjectByIdUseCase(projectIdentifier.id)
+
             _project.value = projectDetails
         }
     }
@@ -138,5 +148,39 @@ class WorkItemsViewModel(
                 _isLoading.value = false
             }
         }
+    }
+
+    /**
+     * Opens a work item in the browser.
+     * 
+     * @param workItemId The ID of the work item to open
+     */
+    fun openWorkItemInBrowser(workItemId: Int) {
+        viewModelScope.launch {
+            val url = getWorkItemUrl(workItemId)
+            if (url != null) {
+                browserLauncher.openUrl(url)
+            }
+        }
+    }
+
+    /**
+     * Updates the state of a work item.
+     * 
+     * @param workItemId The ID of the work item to update
+     * @param newState The new state for the work item
+     * @return True if the update was successful, false otherwise
+     */
+    suspend fun updateWorkItemState(workItemId: Int, newState: String): Boolean {
+        return updateWorkItemStateUseCase(projectIdentifier, workItemId, newState)
+    }
+
+    /**
+     * Updates the selected work item ID.
+     * 
+     * @param workItemId The ID of the selected work item, or null to clear the selection
+     */
+    fun updateSelectedWorkItemId(workItemId: Int?) {
+        _selectedWorkItemId.value = workItemId
     }
 }

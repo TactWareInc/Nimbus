@@ -16,6 +16,8 @@ import androidx.compose.ui.unit.dp
 import net.tactware.nimbus.appwide.ui.theme.spacing
 import net.tactware.nimbus.gitrepos.dal.GitRepo
 import net.tactware.nimbus.projects.dal.entities.ProjectIdentifier
+import net.tactware.nimbus.projects.ui.ExposedSearchMenu
+import net.tactware.nimbus.projects.ui.customfields.CustomFieldsForm
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -27,7 +29,7 @@ import org.koin.core.parameter.parametersOf
  */
 @Composable
 fun WorkItemPage(
-    projectIdentifier: ProjectIdentifier,
+    projectIdentifier: ProjectIdentifier?,
     onNavigateBack: () -> Unit
 ) {
     val viewModel = koinViewModel<WorkItemPageViewModel> { parametersOf(projectIdentifier) }
@@ -41,6 +43,10 @@ fun WorkItemPage(
     val isCreatingBranch by viewModel.isCreatingBranch.collectAsState()
     val workItemCreated by viewModel.workItemCreated.collectAsState()
     val workItemId by viewModel.workItemId.collectAsState()
+    val workItemType by viewModel.workItemType.collectAsState()
+    val selectedProject by viewModel.selectedProject.collectAsState()
+    val availableProjects by viewModel.availableProjects.collectAsState()
+    val customFieldValues by viewModel.customFieldValues.collectAsState()
 
     Scaffold(
         topBar = {
@@ -78,15 +84,107 @@ fun WorkItemPage(
                     ) {
                         Icon(
                             Icons.Default.Build,
-                            contentDescription = "Bug",
+                            contentDescription = "Work Item",
                             tint = MaterialTheme.colorScheme.primary
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            "Create Bug Work Item",
+                            "Create Work Item",
                             style = MaterialTheme.typography.titleMedium
                         )
                     }
+
+                    // Project selection dropdown
+                    if (availableProjects.isNotEmpty()) {
+                        var projectDropdownExpanded by remember { mutableStateOf(false) }
+                        var projectSearchText by remember { mutableStateOf("") }
+
+                        ExposedSearchMenu(
+                            expanded = projectDropdownExpanded,
+                            onExpandedChange = { projectDropdownExpanded = it },
+                            items = listOf(null) + availableProjects,
+                            itemContent = { project ->
+                                DropdownMenuItem(
+                                    text = { Text(project?.name ?: "None (No project)") },
+                                    onClick = {
+                                        viewModel.updateSelectedProject(project)
+                                        projectDropdownExpanded = false
+                                    }
+                                )
+                            },
+                            searchContent = {
+                                OutlinedTextField(
+                                    value = projectSearchText,
+                                    onValueChange = { projectSearchText = it },
+                                    label = { Text("Search Projects") },
+                                    modifier = Modifier.fillMaxWidth().padding(8.dp)
+                                )
+                            },
+                            displayContent = { modifier ->
+                                OutlinedTextField(
+                                    value = selectedProject?.name ?: "Select a project (optional)",
+                                    onValueChange = { },
+                                    label = { Text("Project") },
+                                    modifier = Modifier.fillMaxWidth().menuAnchor(),
+                                    enabled = !workItemCreated,
+                                    readOnly = true,
+                                    trailingIcon = {
+                                        IconButton(onClick = { projectDropdownExpanded = true }) {
+                                            Icon(
+                                                Icons.Default.Add,
+                                                contentDescription = "Select Project"
+                                            )
+                                        }
+                                    }
+                                )
+                            }
+                        )
+                    }
+
+                    // Work item type selection
+                    var typeDropdownExpanded by remember { mutableStateOf(false) }
+                    var typeSearchText by remember { mutableStateOf("") }
+
+                    ExposedSearchMenu(
+                        expanded = typeDropdownExpanded,
+                        onExpandedChange = { typeDropdownExpanded = it },
+                        items = WorkItemType.values().toList(),
+                        itemContent = { type ->
+                            DropdownMenuItem(
+                                text = { Text(type.displayName) },
+                                onClick = {
+                                    viewModel.updateWorkItemType(type)
+                                    typeDropdownExpanded = false
+                                }
+                            )
+                        },
+                        searchContent = {
+                            OutlinedTextField(
+                                value = typeSearchText,
+                                onValueChange = { typeSearchText = it },
+                                label = { Text("Search Types") },
+                                modifier = Modifier.fillMaxWidth().padding(8.dp)
+                            )
+                        },
+                        displayContent = { modifier ->
+                            OutlinedTextField(
+                                value = workItemType.displayName,
+                                onValueChange = { },
+                                label = { Text("Work Item Type") },
+                                modifier = Modifier.fillMaxWidth().menuAnchor(),
+                                enabled = !workItemCreated,
+                                readOnly = true,
+                                trailingIcon = {
+                                    IconButton(onClick = { typeDropdownExpanded = true }) {
+                                        Icon(
+                                            Icons.Default.Add,
+                                            contentDescription = "Select Type"
+                                        )
+                                    }
+                                }
+                            )
+                        }
+                    )
 
                     OutlinedTextField(
                         value = title,
@@ -106,6 +204,13 @@ fun WorkItemPage(
                         enabled = !workItemCreated
                     )
 
+                    // Custom fields
+                    CustomFieldsForm(
+                        customFieldValues = customFieldValues,
+                        onCustomFieldValueChanged = { viewModel.updateCustomFieldValue(it) },
+                        enabled = !workItemCreated
+                    )
+
                     if (!workItemCreated) {
                         Button(
                             onClick = { viewModel.createWorkItem() },
@@ -119,7 +224,7 @@ fun WorkItemPage(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                             }
-                            Text("Create Bug")
+                            Text("Create ticket")
                         }
                     } else {
                         Surface(
@@ -133,12 +238,12 @@ fun WorkItemPage(
                             ) {
                                 Icon(
                                     Icons.Default.Build,
-                                    contentDescription = "Bug Created",
+                                    contentDescription = "${workItemType.displayName} Created",
                                     tint = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    "Bug #$workItemId created successfully",
+                                    "${workItemType.displayName} #$workItemId created successfully",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )

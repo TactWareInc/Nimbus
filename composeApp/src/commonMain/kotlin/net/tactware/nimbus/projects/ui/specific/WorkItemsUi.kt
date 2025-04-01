@@ -74,7 +74,7 @@ fun WorkItemsUi(
     projectIdentifier: ProjectIdentifier,
     onNavigateToCreateWorkItem: (() -> Unit)? = null
 ) {
-    val viewModel = koinViewModel<WorkItemsViewModel> { parametersOf(projectIdentifier) }
+    val viewModel = koinViewModel<ProjectWorkItemsViewModel> { parametersOf(projectIdentifier) }
     val browserLauncher = koinInject<BrowserLauncher>()
 
     // Collect states from ViewModel
@@ -239,7 +239,7 @@ fun WorkItemsUi(
 @Composable
 private fun WorkItemRow(
     workItem: WorkItem,
-    viewModel: WorkItemsViewModel,
+    viewModel: ProjectWorkItemsViewModel,
     browserLauncher: BrowserLauncher
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -409,7 +409,7 @@ private fun WorkItemRow(
                                 val url = viewModel.getWorkItemUrl(workItem.id)
                                 if (url != null) {
                                     println("Opening work item ${workItem.id} in browser: $url")
-                                    browserLauncher.openUrl(url)
+                                    browserLauncher.openUrl(url as String)
                                 } else {
                                     println("Failed to get URL for work item ${workItem.id}")
                                 }
