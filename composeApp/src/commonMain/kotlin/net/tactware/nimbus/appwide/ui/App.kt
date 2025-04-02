@@ -23,11 +23,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Home
@@ -35,10 +38,13 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -476,10 +482,121 @@ fun WorkItemsContent() {
 
 @Composable
 fun DashboardContent(state: MainViewModel.UiState, onNavigateToProjects: () -> Unit) {
+    // Get the DashboardViewModel
+    val dashboardViewModel = koinViewModel<net.tactware.nimbus.appwide.ui.dashboard.DashboardViewModel>()
+
+    // Collect state from the ViewModel
+    val recentBranches by dashboardViewModel.recentBranches.collectAsState()
+    val recentWorkItems by dashboardViewModel.recentWorkItems.collectAsState()
+    val isLoadingBranches by dashboardViewModel.isLoadingBranches.collectAsState()
+    val isLoadingWorkItems by dashboardViewModel.isLoadingWorkItems.collectAsState()
+
+    // Repository and work item counts
+    val totalRepositoriesCount by dashboardViewModel.totalRepositoriesCount.collectAsState()
+    val totalWorkItemsCount by dashboardViewModel.totalWorkItemsCount.collectAsState()
+    val projectRepositoryCounts by dashboardViewModel.projectRepositoryCounts.collectAsState()
+    val projectWorkItemCounts by dashboardViewModel.projectWorkItemCounts.collectAsState()
+    val isLoadingCounts by dashboardViewModel.isLoadingCounts.collectAsState()
+
+    // Bug creation state
+    val bugTitle by dashboardViewModel.bugTitle.collectAsState()
+    val bugDescription by dashboardViewModel.bugDescription.collectAsState()
+    val isCreatingBug by dashboardViewModel.isCreatingBug.collectAsState()
+
+    // State for showing the create bug dialog
+    var showCreateBugDialog by remember { mutableStateOf(false) }
+
+    // Create bug dialog
+    if (showCreateBugDialog) {
+        AlertDialog(
+            onDismissRequest = { 
+                if (!isCreatingBug) {
+                    showCreateBugDialog = false
+                }
+            },
+            title = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = "Create Bug",
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        "Create Bug",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+                ) {
+                    OutlinedTextField(
+                        value = bugTitle,
+                        onValueChange = { dashboardViewModel.updateBugTitle(it) },
+                        label = { Text("Bug Title") },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isCreatingBug
+                    )
+
+                    OutlinedTextField(
+                        value = bugDescription,
+                        onValueChange = { dashboardViewModel.updateBugDescription(it) },
+                        label = { Text("Description") },
+                        modifier = Modifier.fillMaxWidth().height(100.dp),
+                        enabled = !isCreatingBug
+                    )
+
+                    if (isCreatingBug) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Creating bug...")
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { 
+                        // Call createBug without a coroutine scope
+                        // The ViewModel will handle the coroutine internally
+                        val bugId = dashboardViewModel.createBug()
+                        if (bugId != null) {
+                            showCreateBugDialog = false
+                        }
+                    },
+                    enabled = bugTitle.isNotBlank() && !isCreatingBug
+                ) {
+                    Text("Create")
+                }
+            },
+            dismissButton = {
+                Button(
+                    onClick = { showCreateBugDialog = false },
+                    enabled = !isCreatingBug
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
-        // Summary cards
+        // Summary cards and quick actions
         Row(
             modifier = Modifier.fillMaxWidth().padding(bottom = MaterialTheme.spacing.medium),
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
@@ -553,11 +670,18 @@ fun DashboardContent(state: MainViewModel.UiState, onNavigateToProjects: () -> U
                         )
                     }
 
-                    Text(
-                        "12", // Placeholder value
-                        style = MaterialTheme.typography.headlineLarge,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
+                    if (isLoadingCounts) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    } else {
+                        Text(
+                            totalRepositoriesCount.toString(),
+                            style = MaterialTheme.typography.headlineLarge,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
                 }
             }
 
@@ -590,11 +714,205 @@ fun DashboardContent(state: MainViewModel.UiState, onNavigateToProjects: () -> U
                         )
                     }
 
-                    Text(
-                        "24", // Placeholder value
-                        style = MaterialTheme.typography.headlineLarge,
-                        color = MaterialTheme.colorScheme.onTertiaryContainer
-                    )
+                    if (isLoadingCounts) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                    } else {
+                        Text(
+                            totalWorkItemsCount.toString(),
+                            style = MaterialTheme.typography.headlineLarge,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                    }
+                }
+            }
+        }
+
+        // Quick action button for creating a bug
+        Button(
+            onClick = { showCreateBugDialog = true },
+            modifier = Modifier.fillMaxWidth().padding(bottom = MaterialTheme.spacing.medium),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.errorContainer
+            )
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+            ) {
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = "Create Bug",
+                    tint = MaterialTheme.colorScheme.onErrorContainer
+                )
+                Text(
+                    "Create Bug",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onErrorContainer
+                )
+            }
+        }
+
+        // Recent branches section
+        Text(
+            "Recent Branches",
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.padding(bottom = MaterialTheme.spacing.medium)
+        )
+
+        if (isLoadingBranches) {
+            Box(
+                modifier = Modifier.fillMaxWidth().height(100.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        } else if (recentBranches.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxWidth().height(100.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("No recent branches found")
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth().height(200.dp),
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+            ) {
+                items(recentBranches) { branchWithRepo ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.medium),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    branchWithRepo.branch.name,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    "Repository: ${branchWithRepo.repo.name}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                )
+                            }
+
+                            if (!branchWithRepo.branch.isCurrent) {
+                                Button(
+                                    onClick = { dashboardViewModel.switchBranch(branchWithRepo) },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.primary
+                                    )
+                                ) {
+                                    Text("Checkout")
+                                }
+                            } else {
+                                Surface(
+                                    shape = RoundedCornerShape(16.dp),
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                ) {
+                                    Text(
+                                        "Current",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Recent work items section
+        Text(
+            "Recent Work Items",
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.padding(vertical = MaterialTheme.spacing.medium)
+        )
+
+        if (isLoadingWorkItems) {
+            Box(
+                modifier = Modifier.fillMaxWidth().height(100.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        } else if (recentWorkItems.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxWidth().height(100.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("No recent work items found")
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth().height(200.dp),
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+            ) {
+                items(recentWorkItems) { workItem ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = when (workItem.type) {
+                                "Bug" -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+                                "Task" -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
+                                else -> MaterialTheme.colorScheme.surfaceVariant
+                            }
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.medium)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    workItem.title,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+
+                                Surface(
+                                    shape = RoundedCornerShape(16.dp),
+                                    color = when (workItem.state) {
+                                        "Active" -> MaterialTheme.colorScheme.primary
+                                        "New" -> MaterialTheme.colorScheme.secondary
+                                        else -> MaterialTheme.colorScheme.tertiary
+                                    },
+                                    modifier = Modifier.padding(start = 8.dp)
+                                ) {
+                                    Text(
+                                        workItem.state,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onPrimary,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(4.dp))
+
+                            Text(
+                                "Type: ${workItem.type} | ID: ${workItem.id}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -603,7 +921,7 @@ fun DashboardContent(state: MainViewModel.UiState, onNavigateToProjects: () -> U
         Text(
             "Recent Projects",
             style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.padding(bottom = MaterialTheme.spacing.medium)
+            modifier = Modifier.padding(vertical = MaterialTheme.spacing.medium)
         )
 
         when (state) {
@@ -626,7 +944,12 @@ fun DashboardContent(state: MainViewModel.UiState, onNavigateToProjects: () -> U
                     verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
                 ) {
                     items(state.projects) { project ->
-                        ProjectCard(project)
+                        ProjectCard(
+                            project = project,
+                            projectRepositoryCounts = projectRepositoryCounts,
+                            projectWorkItemCounts = projectWorkItemCounts,
+                            isLoadingCounts = isLoadingCounts
+                        )
                     }
                     item {
                         AddProjectCard(onAddProject = onNavigateToProjects)
@@ -647,7 +970,12 @@ fun DashboardContent(state: MainViewModel.UiState, onNavigateToProjects: () -> U
 }
 
 @Composable
-fun ProjectCard(project: ProjectIdentifier) {
+fun ProjectCard(
+    project: ProjectIdentifier,
+    projectRepositoryCounts: Map<ProjectIdentifier, Int>,
+    projectWorkItemCounts: Map<ProjectIdentifier, Int>,
+    isLoadingCounts: Boolean
+) {
     Card(
         modifier = Modifier.fillMaxWidth().height(160.dp),
         colors = CardDefaults.cardColors(
@@ -680,11 +1008,20 @@ fun ProjectCard(project: ProjectIdentifier) {
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        "5 repos", // Placeholder
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                    )
+                    if (isLoadingCounts) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(12.dp),
+                            strokeWidth = 1.dp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        )
+                    } else {
+                        val repoCount = projectRepositoryCounts[project] ?: 0
+                        Text(
+                            "$repoCount repos",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        )
+                    }
                 }
 
                 Row(
@@ -697,11 +1034,20 @@ fun ProjectCard(project: ProjectIdentifier) {
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        "12 items", // Placeholder
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                    )
+                    if (isLoadingCounts) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(12.dp),
+                            strokeWidth = 1.dp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        )
+                    } else {
+                        val workItemCount = projectWorkItemCounts[project] ?: 0
+                        Text(
+                            "$workItemCount items",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        )
+                    }
                 }
             }
         }
