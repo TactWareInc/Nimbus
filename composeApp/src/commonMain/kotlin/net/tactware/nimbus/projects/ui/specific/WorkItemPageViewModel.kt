@@ -197,6 +197,28 @@ class WorkItemPageViewModel(
     }
 
     /**
+     * Sanitizes a string to create a valid Git branch name.
+     * Removes spaces and special characters.
+     */
+    private fun sanitizeBranchName(input: String): String {
+        // Replace spaces with hyphens and remove special characters
+        return input.trim()
+            .replace(" ", "-")
+            .replace(Regex("[^a-zA-Z0-9-_.]"), "")
+            .lowercase()
+    }
+
+    /**
+     * Generates a branch name from the work item title.
+     * Returns a sanitized version of the title that is valid for Git.
+     */
+    fun generateBranchNameFromTitle() {
+        if (_title.value.isNotBlank()) {
+            _branchName.value = sanitizeBranchName(_title.value)
+        }
+    }
+
+    /**
      * Updates a custom field value.
      *
      * @param customFieldValue The custom field value to update
@@ -307,6 +329,9 @@ class WorkItemPageViewModel(
                     // Work item created successfully
                     _workItemId.value = newWorkItemId
                     _workItemCreated.value = true
+
+                    // Automatically generate a branch name from the title
+                    generateBranchNameFromTitle()
 
                     // Get the work item type name for the notification
                     val workItemTypeName = _workItemType.value.displayName

@@ -14,7 +14,10 @@ import net.tactware.nimbus.gitrepos.dal.GitBranch
 import net.tactware.nimbus.gitrepos.dal.GitBranchesRepository
 import net.tactware.nimbus.gitrepos.dal.GitRepo
 import net.tactware.nimbus.gitrepos.dal.GitReposRepository
+import net.tactware.nimbus.appwide.NotificationService
+import org.eclipse.jgit.api.Git
 import org.koin.core.annotation.Factory
+import java.io.File
 
 /**
  * ViewModel for git branch management.
@@ -45,6 +48,22 @@ class GitBranchesViewModel(
 
     // Current project ID
     private var currentProjectId: String = ""
+
+    // Branch creation state
+    private val _branchName = MutableStateFlow("")
+    val branchName: StateFlow<String> = _branchName.asStateFlow()
+
+    private val _selectedReposForBranch = MutableStateFlow<List<GitRepo>>(emptyList())
+    val selectedReposForBranch: StateFlow<List<GitRepo>> = _selectedReposForBranch.asStateFlow()
+
+    private val _isCreatingBranch = MutableStateFlow(false)
+    val isCreatingBranch: StateFlow<Boolean> = _isCreatingBranch.asStateFlow()
+
+    private val _pushToRemote = MutableStateFlow(true)
+    val pushToRemote: StateFlow<Boolean> = _pushToRemote.asStateFlow()
+
+    private val _autoCheckout = MutableStateFlow(true)
+    val autoCheckout: StateFlow<Boolean> = _autoCheckout.asStateFlow()
 
     /**
      * Fetches branches for a project.
@@ -149,7 +168,13 @@ class GitBranchesViewModel(
     fun switchBranch(branchName: String) {
         viewModelScope.launch {
             val repo = _selectedRepo.value ?: return@launch
-            switchBranchUseCase.switchBranch(repo.id, branchName)
+            val success = switchBranchUseCase.switchBranch(repo.id, branchName)
+            if (success) {
+                NotificationService.addNotification(
+                    title = "Branch Switched",
+                    message = "Successfully switched to branch: $branchName in repository: ${repo.name}"
+                )
+            }
         }
     }
 
@@ -160,7 +185,166 @@ class GitBranchesViewModel(
      */
     fun switchBranchWithRepo(branchWithRepo: BranchWithRepo) {
         viewModelScope.launch {
-            switchBranchUseCase.switchBranch(branchWithRepo.repo.id, branchWithRepo.branch.name)
+            val success = switchBranchUseCase.switchBranch(branchWithRepo.repo.id, branchWithRepo.branch.name)
+            if (success) {
+                NotificationService.addNotification(
+                    title = "Branch Switched",
+                    message = "Successfully switched to branch: ${branchWithRepo.branch.name} in repository: ${branchWithRepo.repo.name}"
+                )
+            }
+        }
+    }
+
+    /**
+     * Updates the branch name.
+     *
+     * @param name The new branch name
+     */
+    fun updateBranchName(name: String) {
+        _branchName.value = name
+    }
+
+    /**
+     * Selects a repository for branch creation.
+     *
+     * @param repo The repository to select
+     */
+    fun selectRepoForBranch(repo: GitRepo) {
+        val currentList = _selectedReposForBranch.value.toMutableList()
+        if (!currentList.contains(repo)) {
+            currentList.add(repo)
+            _selectedReposForBranch.value = currentList
+        }
+    }
+
+    /**
+     * Unselects a repository for branch creation.
+     *
+     * @param repo The repository to unselect
+     */
+    fun unselectRepoForBranch(repo: GitRepo) {
+        val currentList = _selectedReposForBranch.value.toMutableList()
+        currentList.remove(repo)
+        _selectedReposForBranch.value = currentList
+    }
+
+    /**
+     * Updates the push to remote option.
+     *
+     * @param value The new value
+     */
+    fun updatePushToRemote(value: Boolean) {
+        _pushToRemote.value = value
+    }
+
+    /**
+     * Updates the auto checkout option.
+     *
+     * @param value The new value
+     */
+    fun updateAutoCheckout(value: Boolean) {
+        _autoCheckout.value = value
+    }
+
+    /**
+     * Creates a branch in the selected repositories.
+     * This creates a new branch in each selected repository based on the current HEAD.
+     */
+    fun createBranch() {
+        if (_branchName.value.isBlank()) {
+            NotificationService.addNotification(
+                title = "Error",
+                message = "Branch name cannot be empty"
+            )
+            return
+        }
+
+        if (_selectedReposForBranch.value.isEmpty()) {
+            NotificationService.addNotification(
+                title = "Error",
+                message = "Please select at least one repository"
+            )
+            return
+        }
+
+        _isCreatingBranch.value = true
+
+        viewModelScope.launch {
+            try {
+                val successfulRepos = mutableListOf<String>()
+                val failedRepos = mutableListOf<Pair<String, String>>()
+
+                for (repo in _selectedReposForBranch.value) {
+                    try {
+                        val repoPath = repo.clonePath
+                        if (repoPath != null) {
+                            val git = Git.open(File(repoPath))
+
+                            if (_autoCheckout.value) {
+                                // Create and checkout the branch
+                                git.checkout()
+                                    .setCreateBranch(true)
+                                    .setName(_branchName.value)
+                                    .call()
+                            } else {
+                                // Create the branch without checking it out
+                                git.branchCreate()
+                                    .setName(_branchName.value)
+                                    .call()
+                            }
+
+                            // Push to remote if option is selected
+                            if (_pushToRemote.value) {
+                                try {
+                                    git.push()
+                                        .setRemote("origin")
+                                        .add(_branchName.value)
+                                        .call()
+                                } catch (e: Exception) {
+                                    // Log the error but continue with other operations
+                                    println("Failed to push branch to remote: ${e.message}")
+                                }
+                            }
+
+                            git.close()
+                            successfulRepos.add(repo.name)
+
+                            // Refresh branches for this repository
+                            fetchBranchesUseCase.fetchBranchesForRepo(repo.id, currentProjectId)
+                        } else {
+                            failedRepos.add(Pair(repo.name, "Repository path is null"))
+                        }
+                    } catch (e: Exception) {
+                        failedRepos.add(Pair(repo.name, e.message ?: "Unknown error"))
+                    }
+                }
+
+                // Show notification with results
+                if (successfulRepos.isNotEmpty()) {
+                    NotificationService.addNotification(
+                        title = "Branches Created",
+                        message = "Successfully created branches in: ${successfulRepos.joinToString(", ")}"
+                    )
+
+                    // Clear the branch name and selected repos after successful creation
+                    _branchName.value = ""
+                    _selectedReposForBranch.value = emptyList()
+                }
+
+                if (failedRepos.isNotEmpty()) {
+                    NotificationService.addNotification(
+                        title = "Branch Creation Failed",
+                        message = "Failed to create branches in: ${failedRepos.map { "${it.first} (${it.second})" }.joinToString(", ")}"
+                    )
+                }
+            } catch (e: Exception) {
+                NotificationService.addNotification(
+                    title = "Error",
+                    message = "Failed to create branches: ${e.message}"
+                )
+            } finally {
+                _isCreatingBranch.value = false
+            }
         }
     }
 
