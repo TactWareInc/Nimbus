@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import net.tactware.nimbus.gitrepos.bl.CreateBranchUseCase
 import net.tactware.nimbus.gitrepos.bl.FetchBranchesUseCase
 import net.tactware.nimbus.gitrepos.bl.SwitchBranchUseCase
 import net.tactware.nimbus.gitrepos.dal.BranchWithRepo
@@ -15,9 +16,7 @@ import net.tactware.nimbus.gitrepos.dal.GitBranchesRepository
 import net.tactware.nimbus.gitrepos.dal.GitRepo
 import net.tactware.nimbus.gitrepos.dal.GitReposRepository
 import net.tactware.nimbus.appwide.NotificationService
-import org.eclipse.jgit.api.Git
 import org.koin.core.annotation.Factory
-import java.io.File
 
 /**
  * ViewModel for git branch management.
@@ -27,7 +26,8 @@ class GitBranchesViewModel(
     private val gitBranchesRepository: GitBranchesRepository,
     private val gitReposRepository: GitReposRepository,
     private val fetchBranchesUseCase: FetchBranchesUseCase,
-    private val switchBranchUseCase: SwitchBranchUseCase
+    private val switchBranchUseCase: SwitchBranchUseCase,
+    private val createBranchUseCase: CreateBranchUseCase
 ) : ViewModel() {
 
     // UI state
@@ -271,70 +271,26 @@ class GitBranchesViewModel(
 
         viewModelScope.launch {
             try {
-                val successfulRepos = mutableListOf<String>()
-                val failedRepos = mutableListOf<Pair<String, String>>()
+                val success = createBranchUseCase(
+                    branchName = _branchName.value,
+                    repos = _selectedReposForBranch.value,
+                    pushToRemote = _pushToRemote.value,
+                    autoCheckout = _autoCheckout.value
+                )
 
-                for (repo in _selectedReposForBranch.value) {
-                    try {
-                        val repoPath = repo.clonePath
-                        if (repoPath != null) {
-                            val git = Git.open(File(repoPath))
-
-                            if (_autoCheckout.value) {
-                                // Create and checkout the branch
-                                git.checkout()
-                                    .setCreateBranch(true)
-                                    .setName(_branchName.value)
-                                    .call()
-                            } else {
-                                // Create the branch without checking it out
-                                git.branchCreate()
-                                    .setName(_branchName.value)
-                                    .call()
-                            }
-
-                            // Push to remote if option is selected
-                            if (_pushToRemote.value) {
-                                try {
-                                    git.push()
-                                        .setRemote("origin")
-                                        .add(_branchName.value)
-                                        .call()
-                                } catch (e: Exception) {
-                                    // Log the error but continue with other operations
-                                    println("Failed to push branch to remote: ${e.message}")
-                                }
-                            }
-
-                            git.close()
-                            successfulRepos.add(repo.name)
-
-                            // Refresh branches for this repository
-                            fetchBranchesUseCase.fetchBranchesForRepo(repo.id, currentProjectId)
-                        } else {
-                            failedRepos.add(Pair(repo.name, "Repository path is null"))
-                        }
-                    } catch (e: Exception) {
-                        failedRepos.add(Pair(repo.name, e.message ?: "Unknown error"))
-                    }
-                }
-
-                // Show notification with results
-                if (successfulRepos.isNotEmpty()) {
+                if (success) {
                     NotificationService.addNotification(
                         title = "Branches Created",
-                        message = "Successfully created branches in: ${successfulRepos.joinToString(", ")}"
+                        message = "Successfully created branches in selected repositories"
                     )
 
                     // Clear the branch name and selected repos after successful creation
                     _branchName.value = ""
                     _selectedReposForBranch.value = emptyList()
-                }
-
-                if (failedRepos.isNotEmpty()) {
+                } else {
                     NotificationService.addNotification(
                         title = "Branch Creation Failed",
-                        message = "Failed to create branches in: ${failedRepos.map { "${it.first} (${it.second})" }.joinToString(", ")}"
+                        message = "Failed to create branches in some or all repositories"
                     )
                 }
             } catch (e: Exception) {
