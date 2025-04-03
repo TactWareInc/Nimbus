@@ -414,7 +414,7 @@ fun WorkItemsContent() {
                             ) {
                                 Icon(
                                     Icons.Default.PlayArrow,
-                                    contentDescription = "List Detail Mode",
+                                    contentDescription = "List Mode",
                                     tint = if (isListDetailMode) 
                                         MaterialTheme.colorScheme.onPrimaryContainer 
                                     else 
