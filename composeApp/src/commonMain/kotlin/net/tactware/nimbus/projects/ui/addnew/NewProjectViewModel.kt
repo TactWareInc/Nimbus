@@ -8,6 +8,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import net.tactware.nimbus.appwide.NotificationService
 import net.tactware.nimbus.projects.bl.SaveProjectUseCase
 import net.tactware.nimbus.projects.dal.entities.DevOpsServerOrService
 import org.koin.core.annotation.Factory
@@ -24,6 +25,8 @@ class NewProjectViewModel(private val saveProjectUseCase: SaveProjectUseCase) : 
     var process by mutableStateOf(ProcessType.AGILE)
 
     var personalAccessToken by mutableStateOf("")
+
+    var patExpirationDate by mutableStateOf<Long?>(null)
 
     val saveAccessible = derivedStateOf {
         projectLocalName.isNotEmpty() && projectUrl.isNotEmpty() && personalAccessToken.isNotEmpty()
@@ -49,19 +52,49 @@ class NewProjectViewModel(private val saveProjectUseCase: SaveProjectUseCase) : 
             }
 
             NewProjectInteractions.SaveProject -> {
+                println("[DEBUG_LOG] NewProjectViewModel: Saving project $projectLocalName ($projectUrl)")
                 viewModelScope.launch(Dispatchers.Default) {
                     // Save the project
-                    saveProjectUseCase.invoke(
-                        projectLocalName,
-                        projectUrl,
-                        isDevOpsServerOrService,
-                        personalAccessToken,
-                    )
+                    println("[DEBUG_LOG] NewProjectViewModel: Calling SaveProjectUseCase for project $projectLocalName")
+                    when(saveProjectUseCase.invoke(
+                        projectName = projectLocalName,
+                        projectUrl = projectUrl,
+                        isDevOpsServer = isDevOpsServerOrService,
+                        personalAccessToken = personalAccessToken,
+                        patExpirationDate = patExpirationDate
+                    )){
+                        SaveProjectUseCase.UseCaseResult.SUCCESS ->{
+                            println("[DEBUG_LOG] NewProjectViewModel: Project $projectLocalName saved successfully")
+                            projectLocalName = ""
+                            projectUrl = ""
+                            personalAccessToken = ""
+                            patExpirationDate = null
+                            isDevOpsServerOrService
+                        }
+                        SaveProjectUseCase.UseCaseResult.FAILURE ->{
+                            println("[DEBUG_LOG] NewProjectViewModel: Failed to save project $projectLocalName")
+                            NotificationService.addNotification(
+                                title = "Failed to save project",
+                                message = "An error occurred while saving the project. Please try again.",
+                            )
+                        }
+                        SaveProjectUseCase.UseCaseResult.ALREADY_EXISTS ->{
+                            println("[DEBUG_LOG] NewProjectViewModel: Project $projectLocalName already exists")
+                            NotificationService.addNotification(
+                                title = "Project already exists",
+                                message = "A project with the same URL already exists. Please choose a different URL.",
+                            )
+                        }
+                    }
                 }
             }
 
             is NewProjectInteractions.PAT -> {
                 personalAccessToken = interaction.personalAccessToken
+            }
+
+            is NewProjectInteractions.PATExpiration -> {
+                patExpirationDate = interaction.expirationDate
             }
         }
     }

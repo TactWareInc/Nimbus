@@ -14,6 +14,7 @@ import net.tactware.nimbus.gitrepos.bl.GetDownloadingReposUseCase
 import net.tactware.nimbus.gitrepos.bl.LinkExistingRepositoryUseCase
 import net.tactware.nimbus.gitrepos.bl.StopDownloadingRepoUseCase
 import net.tactware.nimbus.gitrepos.dal.GitRepo
+import net.tactware.nimbus.gitrepos.dal.GitReposRepository
 import net.tactware.nimbus.projects.dal.entities.ProjectIdentifier
 import org.koin.core.annotation.Factory
 import org.koin.core.annotation.InjectedParam
@@ -30,7 +31,8 @@ class RepositoriesViewModel(
     private val cloneRepositoryUseCase: CloneRepositoryUseCase,
     private val stopDownloadingRepoUseCase: StopDownloadingRepoUseCase,
     private val linkExistingRepositoryUseCase: LinkExistingRepositoryUseCase,
-    private val directoryPicker: DirectoryPicker
+    private val directoryPicker: DirectoryPicker,
+    private val gitReposRepository: GitReposRepository
 ) : ViewModel() {
 
     private val _projectGitRepos = MutableStateFlow<List<GitRepo>>(emptyList())
@@ -67,12 +69,18 @@ class RepositoriesViewModel(
 
 
     init {
-        // Fetch repositories for the project
+        // Fetch repositories for the project initially to ensure branches are fetched
         viewModelScope.launch {
-            val repos = fetchBranchesUseCase.fetchBranchesForProject(projectIdentifier.id.toString())
-            _projectGitRepos.value = repos
-            // Initialize filtered repos with all repos
-            updateFilteredRepos(repos, _searchText.value)
+            fetchBranchesUseCase.fetchBranchesForProject(projectIdentifier.id.toString())
+        }
+
+        // Subscribe to the flow of repositories from the repository
+        viewModelScope.launch {
+            gitReposRepository.getReposByProjectId(projectIdentifier.id).collect { repos ->
+                _projectGitRepos.value = repos
+                // Update filtered repos when repositories change
+                updateFilteredRepos(repos, _searchText.value)
+            }
         }
 
         // Monitor downloading repositories

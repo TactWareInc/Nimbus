@@ -25,13 +25,24 @@ class ProjectUpdater(
     }
 
     private suspend fun updateRepositories(client: AzureDevOpsClient, project: Project) {
-        val listOfRepos = Json.parseToJsonElement(client.getProjectRepositories()).jsonObject["value"]
+        println("[DEBUG_LOG] ProjectUpdater.updateRepositories: Updating repositories for project ${project.name}")
+
+        val projectReposJson = client.getProjectRepositories()
+        println("[DEBUG_LOG] ProjectUpdater.updateRepositories: Got repositories JSON: $projectReposJson")
+
+        val listOfRepos = Json.parseToJsonElement(projectReposJson).jsonObject["value"]
+        println("[DEBUG_LOG] ProjectUpdater.updateRepositories: Parsed repositories value: $listOfRepos")
+
         val repoInfos = listOfRepos?.let {
+            println("[DEBUG_LOG] ProjectUpdater.updateRepositories: Decoding repository information")
             Json.decodeFromString<List<ProjectRepoInformation>>( it.toString())
         } ?: emptyList()
 
+        println("[DEBUG_LOG] ProjectUpdater.updateRepositories: Found ${repoInfos.size} repositories")
+
         for (repoInfo in repoInfos) {
-                gitReposRepository.storeRepo(repoInfo.webUrl, repoInfo.name, project.id)
+            println("[DEBUG_LOG] ProjectUpdater.updateRepositories: Storing repository ${repoInfo.name} (${repoInfo.webUrl})")
+            gitReposRepository.storeRepo(repoInfo.webUrl, repoInfo.name, project.id)
         }
 
         // Check to see if local repositories are still valid

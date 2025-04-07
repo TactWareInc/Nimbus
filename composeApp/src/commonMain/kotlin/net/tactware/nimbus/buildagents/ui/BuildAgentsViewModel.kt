@@ -64,7 +64,9 @@ class BuildAgentsViewModel(
                         id = agentInfo.id.toString(),
                         name = agentInfo.name,
                         description = "Agent status: ${agentInfo.status}",
-                        isOnline = agentInfo.status.equals("online", ignoreCase = true)
+                        isOnline = agentInfo.status.equals("online", ignoreCase = true),
+                        poolName = agentInfo.poolName,
+                        organization = agentInfo.organization
                     )
                 }
 

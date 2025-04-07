@@ -24,5 +24,7 @@ data class BuildAgentInfo(
     @SerialName("systemCapabilities")
     val capabilities: Map<String, String>? = null,
     val version: String? = null,
-    val osDescription: String? = null
+    val osDescription: String? = null,
+    val poolName: String? = null,
+    val organization: String? = null
 )

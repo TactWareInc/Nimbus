@@ -12,6 +12,8 @@ internal sealed class NewProjectInteractions {
 
     data class PAT(val personalAccessToken : String) : NewProjectInteractions()
 
+    data class PATExpiration(val expirationDate: Long?) : NewProjectInteractions()
+
     data object SaveProject : NewProjectInteractions()
 
 

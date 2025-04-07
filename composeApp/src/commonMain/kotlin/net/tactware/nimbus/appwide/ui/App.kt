@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -124,7 +125,7 @@ fun App() {
             NavItem("Projects", Icons.Default.Build, "Projects"),
             NavItem("Work Items", Icons.Default.PlayArrow, "Work Items"),
             NavItem("Git Branches", Icons.Default.Search, "Git Branches"),
-            NavItem("Build Agents", Icons.Default.Build, "Build Agents"),
+            NavItem("Build Agents", Icons.Default.Person, "Build Agents"),
             NavItem("Settings", Icons.Default.Settings, "Settings")
         )
 
@@ -835,87 +836,6 @@ fun DashboardContent(state: MainViewModel.UiState, onNavigateToProjects: () -> U
             }
         }
 
-        // Recent work items section
-        Text(
-            "Recent Work Items",
-            style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.padding(vertical = MaterialTheme.spacing.medium)
-        )
-
-        if (isLoadingWorkItems) {
-            Box(
-                modifier = Modifier.fillMaxWidth().height(100.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
-        } else if (recentWorkItems.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxWidth().height(100.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("No recent work items found")
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxWidth().height(200.dp),
-                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
-            ) {
-                items(recentWorkItems) { workItem ->
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = when (workItem.type) {
-                                "Bug" -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
-                                "Task" -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
-                                else -> MaterialTheme.colorScheme.surfaceVariant
-                            }
-                        )
-                    ) {
-                        Column(
-                            modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.medium)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    workItem.title,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-
-                                Surface(
-                                    shape = RoundedCornerShape(16.dp),
-                                    color = when (workItem.state) {
-                                        "Active" -> MaterialTheme.colorScheme.primary
-                                        "New" -> MaterialTheme.colorScheme.secondary
-                                        else -> MaterialTheme.colorScheme.tertiary
-                                    },
-                                    modifier = Modifier.padding(start = 8.dp)
-                                ) {
-                                    Text(
-                                        workItem.state,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onPrimary,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(4.dp))
-
-                            Text(
-                                "Type: ${workItem.type} | ID: ${workItem.id}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                            )
-                        }
-                    }
-                }
-            }
-        }
 
         // Recent projects section
         Text(
@@ -963,6 +883,92 @@ fun DashboardContent(state: MainViewModel.UiState, onNavigateToProjects: () -> U
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator()
+                }
+            }
+        }
+    }
+
+    // Recent work items section
+    Text(
+        "Recent Work Items",
+        style = MaterialTheme.typography.titleLarge,
+        modifier = Modifier.padding(vertical = MaterialTheme.spacing.medium)
+    )
+
+    if (isLoadingWorkItems) {
+        Box(
+            modifier = Modifier.fillMaxWidth().height(100.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+    } else if (recentWorkItems.isEmpty()) {
+        Box(
+            modifier = Modifier.fillMaxWidth().height(100.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("No recent work items found")
+        }
+    } else {
+        LazyRow(
+            modifier = Modifier.fillMaxWidth().height(200.dp),
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
+        ) {
+            items(recentWorkItems) { workItem ->
+                Card(
+                    modifier = Modifier.width(300.dp).height(120.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = when (workItem.type) {
+                            "Bug" -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+                            "Task" -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
+                            else -> MaterialTheme.colorScheme.surfaceVariant
+                        }
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.medium)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                workItem.title,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                            )
+
+                            Surface(
+                                shape = RoundedCornerShape(16.dp),
+                                color = when (workItem.state) {
+                                    "Active" -> MaterialTheme.colorScheme.primary
+                                    "New" -> MaterialTheme.colorScheme.secondary
+                                    else -> MaterialTheme.colorScheme.tertiary
+                                },
+                                modifier = Modifier.padding(start = 8.dp)
+                            ) {
+                                Text(
+                                    workItem.state,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        Text(
+                            "Type: ${workItem.type} | ID: ${workItem.id}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                        )
+                    }
                 }
             }
         }

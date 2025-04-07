@@ -149,8 +149,16 @@ class DashboardViewModel(
                 val repoCounts = mutableMapOf<ProjectIdentifier, Int>()
                 var totalRepos = 0
 
+                println("[DEBUG_LOG] DashboardViewModel: Calculating repository counts for ${projects.size} projects")
                 for (project in projects) {
+                    println("[DEBUG_LOG] DashboardViewModel: Getting repositories for project ${project.name} (${project.id})")
                     val repos = gitReposRepository.getReposByProjectIdList(project.id)
+                    println("[DEBUG_LOG] DashboardViewModel: Found ${repos.size} repositories for project ${project.name}")
+                    if (repos.isEmpty()) {
+                        println("[DEBUG_LOG] DashboardViewModel: No repositories found for project ${project.name}. This might indicate an issue.")
+                    } else {
+                        println("[DEBUG_LOG] DashboardViewModel: Repositories for project ${project.name}: ${repos.map { it.name }}")
+                    }
                     repoCounts[project] = repos.size
                     totalRepos += repos.size
                 }

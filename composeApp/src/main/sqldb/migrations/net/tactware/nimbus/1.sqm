@@ -1,4 +1,5 @@
 import kotlin.Boolean;
+import kotlin.Long;
 
 -- Create WorkItems table
 CREATE TABLE IF NOT EXISTS WorkItems(
@@ -23,11 +24,49 @@ CREATE VIRTUAL TABLE IF NOT EXISTS WorkItemsFts USING fts4(
     tokenize = 'unicode61'
 );
 
+-- Create Projects table with all columns including those added in later migrations
 CREATE TABLE IF NOT EXISTS Projects(
-id TEXT PRIMARY KEY NOT NULL,
-name TEXT NOT NULL,
-projectUrl TEXT NOT NULL,
-isAzureDevopsServer INTEGER AS Boolean NOT NULL,
-personalAccessToken TEXT NOT NULL,
-projectProcessType TEXT NOT NULL
+    id TEXT PRIMARY KEY NOT NULL,
+    name TEXT NOT NULL,
+    projectUrl TEXT NOT NULL,
+    isAzureDevopsServer INTEGER AS Boolean NOT NULL,
+    personalAccessToken TEXT NOT NULL,
+    projectProcessType TEXT NOT NULL,
+    patExpirationDate INTEGER AS Long
 );
+
+-- Create GitRepos table
+CREATE TABLE IF NOT EXISTS GitRepos(
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    name TEXT NOT NULL,
+    url TEXT NOT NULL,
+    is_cloned INTEGER AS Boolean DEFAULT 0 NOT NULL,
+    clone_path TEXT
+);
+
+-- Create ProjectsToGitRepos table
+CREATE TABLE IF NOT EXISTS ProjectsToGitRepos(
+    project_id TEXT NOT NULL,
+    git_repo_id INTEGER NOT NULL,
+    PRIMARY KEY (project_id, git_repo_id),
+    FOREIGN KEY (git_repo_id) REFERENCES GitRepos(id) ON DELETE CASCADE
+);
+
+-- Create BuildAgents table with all columns including those added in later migrations
+CREATE TABLE IF NOT EXISTS BuildAgents(
+    id INTEGER PRIMARY KEY NOT NULL,
+    name TEXT NOT NULL,
+    status TEXT NOT NULL,
+    enabled INTEGER AS Boolean NOT NULL,
+    capabilities TEXT,
+    version TEXT,
+    os_description TEXT,
+    project_id TEXT NOT NULL,
+    last_updated INTEGER NOT NULL,
+    poolName TEXT,
+    organization TEXT,
+    FOREIGN KEY (project_id) REFERENCES Projects(id) ON DELETE CASCADE
+);
+
+-- Create index on project_id for faster lookups
+CREATE INDEX IF NOT EXISTS idx_buildagents_project_id ON BuildAgents(project_id);

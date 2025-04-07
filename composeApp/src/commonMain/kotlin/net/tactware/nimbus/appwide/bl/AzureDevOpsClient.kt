@@ -17,7 +17,10 @@ import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.longOrNull
 import net.tactware.nimbus.appwide.bl.specificworkitem.WorkItemDetails
 import net.tactware.nimbus.appwide.bl.specificworkitem.WorkItemResult
 import net.tactware.nimbus.buildagents.dal.BuildAgentInfo
@@ -95,7 +98,10 @@ class AzureDevOpsClient(
      */
     suspend fun getProjectRepositories(): String {
         val url = "${project.projectUrl}/_apis/git/repositories?api-version=$API_VERSION"
-        return get(url)
+        LoggerStatic.d("AzureDevOpsClient", "Getting repositories for project ${project.name} from URL: $url")
+        val result = get(url)
+        LoggerStatic.d("AzureDevOpsClient", "Repository result: $result")
+        return result
     }
 
     /**
@@ -153,7 +159,15 @@ class AzureDevOpsClient(
                     val agentsResponse = get(agentsUrl)
                     val agentsResult = json.decodeFromString<BuildAgentResponse>(agentsResponse)
 
-                    allAgents.addAll(agentsResult.value)
+                    // Add pool name and organization to each agent
+                    val agentsWithPoolInfo = agentsResult.value.map { agent ->
+                        agent.copy(
+                            poolName = pool.name,
+                            organization = project.orgOrCollection
+                        )
+                    }
+
+                    allAgents.addAll(agentsWithPoolInfo)
                 } catch (e: Exception) {
 //                    println("Error fetching agents for pool ${pool.name} (ID=${pool.id}): ${e.message}")
                 }
@@ -338,6 +352,59 @@ class AzureDevOpsClient(
         } catch (e: Exception) {
             println("Error updating work item: ${e.message}")
             return false
+        }
+    }
+
+    /**
+     * Queries the Azure DevOps API to get the PAT expiration date.
+     *
+     * @return The PAT expiration date in milliseconds since epoch, or null if not available.
+     */
+    suspend fun getPatExpirationDate(): Long? {
+        try {
+            // Make the API call to get the PAT information
+            // The API endpoint is: https://vssps.dev.azure.com/{organization}/_apis/tokens/pats?api-version=
+            val organization = project.orgOrCollection
+            val url = "${project.orgOrCollectionUrl}/_apis/tokens/pats?api-version=$API_VERSION"
+
+            val response = client.get(url) {
+                headers {
+                    append(HttpHeaders.ContentType, "application/json")
+                }
+            }
+
+            // Check if the response was successful
+            if (!response.status.isSuccess()) {
+                println("Error querying PAT expiration date: HTTP ${response.status.value} - ${response.bodyAsText()}")
+                return null
+            }
+
+            // Parse the response to get the PAT expiration date
+            val responseBody = response.body<String>()
+            val json = Json { ignoreUnknownKeys = true }
+            val jsonObject = json.decodeFromString<JsonObject>(responseBody)
+
+            // Extract the PAT expiration date from the response
+            // The exact structure of the response is not known, so this is a best guess
+            // based on common API patterns. It may need to be adjusted based on the actual response.
+            val patsArray = jsonObject["value"]?.jsonArray
+            if (patsArray != null) {
+                for (patObject in patsArray) {
+                    // Look for the PAT that matches the one we're using
+                    val patToken = patObject.jsonObject["token"]?.jsonPrimitive?.content
+                    if (patToken == project.personalAccessToken) {
+                        // Extract the expiration date
+                        val expirationDate = patObject.jsonObject["validTo"]?.jsonPrimitive?.longOrNull
+                        return expirationDate
+                    }
+                }
+            }
+
+            // If we couldn't find the PAT in the response, return null
+            return null
+        } catch (e: Exception) {
+            println("Error querying PAT expiration date: ${e.message}")
+            return null
         }
     }
 }

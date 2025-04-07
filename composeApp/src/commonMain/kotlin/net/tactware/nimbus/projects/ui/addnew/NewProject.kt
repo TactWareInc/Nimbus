@@ -23,10 +23,19 @@ import androidx.compose.ui.Modifier
 import net.tactware.nimbus.appwide.ui.theme.spacing
 import net.tactware.nimbus.projects.dal.entities.DevOpsServerOrService
 import org.koin.compose.viewmodel.koinViewModel
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewProject() {
+    // Function to format a timestamp as a date string
+    fun formatDate(timestamp: Long): String {
+        val date = Date(timestamp)
+        val formatter = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
+        return formatter.format(date)
+    }
     val viewModel = koinViewModel<NewProjectViewModel>()
     Box(Modifier.fillMaxSize(), Alignment.Center) {
         Column(
@@ -66,6 +75,37 @@ fun NewProject() {
                 label = { Text("Personal Access Token") },
                 modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.default)
             )
+
+            // PAT Expiration Date Picker
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.default)
+            ) {
+                Text("PAT Expiration Date:", style = MaterialTheme.typography.bodyMedium)
+                Button(
+                    onClick = {
+                        // In a real implementation, this would show a date picker
+                        // For now, we'll just set a date 90 days in the future
+                        val ninetyDaysInMillis = 90L * 24 * 60 * 60 * 1000
+                        val expirationDate = System.currentTimeMillis() + ninetyDaysInMillis
+                        viewModel.onInteraction(NewProjectInteractions.PATExpiration(expirationDate))
+                    },
+                    modifier = Modifier.padding(start = MaterialTheme.spacing.default)
+                ) {
+                    Text(
+                        if (viewModel.patExpirationDate == null) "Set Expiration Date" 
+                        else "Expires: ${formatDate(viewModel.patExpirationDate!!)}"
+                    )
+                }
+                if (viewModel.patExpirationDate != null) {
+                    Button(
+                        onClick = { viewModel.onInteraction(NewProjectInteractions.PATExpiration(null)) },
+                        modifier = Modifier.padding(start = MaterialTheme.spacing.default)
+                    ) {
+                        Text("Clear")
+                    }
+                }
+            }
             ExposedDropdownMenuBox(
                 expanded = false,
                 onExpandedChange = {  },
