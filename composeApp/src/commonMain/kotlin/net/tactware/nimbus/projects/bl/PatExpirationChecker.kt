@@ -4,6 +4,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import net.tactware.nimbus.appwide.bl.AzureDevOpsClient
 import net.tactware.nimbus.projects.dal.ProjectsRepository
+import net.tactware.nimbus.projects.dal.entities.PatInfo
 import net.tactware.nimbus.projects.dal.entities.Project
 import org.koin.core.annotation.Factory
 import kotlin.time.Duration.Companion.days
@@ -86,14 +87,24 @@ class PatExpirationChecker(
      * @return The PAT expiration date in milliseconds since epoch, or null if not available.
      */
     suspend fun queryPatExpirationDate(project: Project): Long? {
+        return queryPatInfo(project)?.validTo
+    }
+
+    /**
+     * Queries the Azure DevOps API to get detailed information about the PAT.
+     * 
+     * @param project The project to query.
+     * @return A PatInfo object containing information about the PAT, or null if not available.
+     */
+    suspend fun queryPatInfo(project: Project): PatInfo? {
         try {
             // Create an AzureDevOpsClient for the project
             val client = AzureDevOpsClient(project)
 
-            // Use the client to get the PAT expiration date
-            return client.getPatExpirationDate()
+            // Use the client to get the PAT information
+            return client.getPatInfo()
         } catch (e: Exception) {
-            println("Error querying PAT expiration date: ${e.message}")
+            println("Error querying PAT information: ${e.message}")
             return null
         }
     }

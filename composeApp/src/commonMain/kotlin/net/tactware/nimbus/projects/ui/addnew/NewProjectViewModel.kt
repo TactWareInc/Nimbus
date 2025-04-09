@@ -9,12 +9,19 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import net.tactware.nimbus.appwide.NotificationService
+import net.tactware.nimbus.appwide.bl.AzureDevOpsClient
+import net.tactware.nimbus.projects.bl.PatExpirationChecker
 import net.tactware.nimbus.projects.bl.SaveProjectUseCase
 import net.tactware.nimbus.projects.dal.entities.DevOpsServerOrService
+import net.tactware.nimbus.projects.dal.entities.PatInfo
+import net.tactware.nimbus.projects.dal.entities.Project
 import org.koin.core.annotation.Factory
 
 @Factory
-class NewProjectViewModel(private val saveProjectUseCase: SaveProjectUseCase) : ViewModel() {
+class NewProjectViewModel(
+    private val saveProjectUseCase: SaveProjectUseCase,
+    private val patExpirationChecker: PatExpirationChecker
+) : ViewModel() {
 
     var projectLocalName by mutableStateOf("")
 
@@ -27,6 +34,11 @@ class NewProjectViewModel(private val saveProjectUseCase: SaveProjectUseCase) : 
     var personalAccessToken by mutableStateOf("")
 
     var patExpirationDate by mutableStateOf<Long?>(null)
+
+    // PAT information
+    var patInfo by mutableStateOf<PatInfo?>(null)
+    var isLoadingPatInfo by mutableStateOf(false)
+    var patInfoError by mutableStateOf<String?>(null)
 
     val saveAccessible = derivedStateOf {
         projectLocalName.isNotEmpty() && projectUrl.isNotEmpty() && personalAccessToken.isNotEmpty()
@@ -69,6 +81,8 @@ class NewProjectViewModel(private val saveProjectUseCase: SaveProjectUseCase) : 
                             projectUrl = ""
                             personalAccessToken = ""
                             patExpirationDate = null
+                            patInfo = null
+                            patInfoError = null
                             isDevOpsServerOrService
                         }
                         SaveProjectUseCase.UseCaseResult.FAILURE ->{
@@ -91,6 +105,16 @@ class NewProjectViewModel(private val saveProjectUseCase: SaveProjectUseCase) : 
 
             is NewProjectInteractions.PAT -> {
                 personalAccessToken = interaction.personalAccessToken
+
+                // Only try to fetch PAT info if we have both a URL and a PAT
+                if (projectUrl.isNotEmpty() && personalAccessToken.isNotEmpty()) {
+                    fetchPatInfo()
+                } else {
+                    // Clear PAT info if PAT is empty
+                    patInfo = null
+                    patExpirationDate = null
+                    patInfoError = null
+                }
             }
 
             is NewProjectInteractions.PATExpiration -> {
@@ -106,5 +130,55 @@ class NewProjectViewModel(private val saveProjectUseCase: SaveProjectUseCase) : 
         CMMI("CMMI"),
         BASIC("Basic"),
         CUSTOM("Custom");
+    }
+
+    /**
+     * Fetches information about the PAT from the Azure DevOps API.
+     */
+    private fun fetchPatInfo() {
+        isLoadingPatInfo = true
+        patInfoError = null
+
+        viewModelScope.launch(Dispatchers.Default) {
+            try {
+                // Create a temporary project object to use with the PAT checker
+                val tempProject = Project(
+                    id = "",
+                    projectUrl = projectUrl,
+                    name = projectLocalName,
+                    isServerOrService = isDevOpsServerOrService,
+                    personalAccessToken = personalAccessToken
+                )
+
+                // Query PAT information
+                val info = patExpirationChecker.queryPatInfo(tempProject)
+
+                // Update the view model state
+                patInfo = info
+                patExpirationDate = info?.validTo
+                patInfoError = null
+
+                // Log the result
+                println("[DEBUG_LOG] NewProjectViewModel: PAT info retrieved: $info")
+
+                if (info?.isExpired() == true) {
+                    NotificationService.addNotification(
+                        title = "PAT Expired",
+                        message = "The Personal Access Token you entered has expired. Please provide a valid PAT.",
+                    )
+                } else if (info?.isExpiring() == true) {
+                    NotificationService.addNotification(
+                        title = "PAT Expiring Soon",
+                        message = "The Personal Access Token you entered will expire soon. Consider generating a new one.",
+                    )
+                }
+            } catch (e: Exception) {
+                println("[DEBUG_LOG] NewProjectViewModel: Error fetching PAT info: ${e.message}")
+                patInfoError = "Failed to retrieve PAT information: ${e.message}"
+                patInfo = null
+            } finally {
+                isLoadingPatInfo = false
+            }
+        }
     }
 }
