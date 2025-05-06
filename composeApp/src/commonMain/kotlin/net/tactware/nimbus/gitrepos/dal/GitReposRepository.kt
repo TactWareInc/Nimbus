@@ -61,4 +61,12 @@ class GitReposRepository(provider: IDatabaseProvider<NimbusDb>) {
     suspend fun getReposByProjectIdList(projectId: Uuid): List<GitRepo> {
         return queries.getAllGitReposForProject(projectId.toString()).executeAsList().map(mapper)
     }
+
+    suspend fun getRepoById(repoId: Long): GitRepo? {
+        return try {
+            queries.getGitRepoById(repoId).executeAsOneOrNull()?.let(mapper)
+        } catch (e: Exception) {
+            null
+        }
+    }
 }

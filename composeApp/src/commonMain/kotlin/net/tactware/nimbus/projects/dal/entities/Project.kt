@@ -7,6 +7,7 @@ data class Project(
     val name: String,
     val isServerOrService: DevOpsServerOrService,
     val personalAccessToken: String,
+    val patExpirationDate: Long? = null,
 ) {
     val orgOrCollection: String
         get() {

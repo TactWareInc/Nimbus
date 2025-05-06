@@ -5,14 +5,16 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import net.tactware.nimbus.appwide.ui.DirectoryPicker
 import net.tactware.nimbus.gitrepos.bl.CloneRepositoryUseCase
+import net.tactware.nimbus.gitrepos.bl.FetchBranchesUseCase
 import net.tactware.nimbus.gitrepos.bl.GetDownloadingReposUseCase
-import net.tactware.nimbus.gitrepos.bl.GetReposByProjectIdUseCase
 import net.tactware.nimbus.gitrepos.bl.LinkExistingRepositoryUseCase
-import net.tactware.nimbus.gitrepos.bl.RepositoryDownloadTracker
+import net.tactware.nimbus.gitrepos.bl.StopDownloadingRepoUseCase
 import net.tactware.nimbus.gitrepos.dal.GitRepo
+import net.tactware.nimbus.gitrepos.dal.GitReposRepository
 import net.tactware.nimbus.projects.dal.entities.ProjectIdentifier
 import org.koin.core.annotation.Factory
 import org.koin.core.annotation.InjectedParam
@@ -24,12 +26,13 @@ import org.koin.core.annotation.InjectedParam
 class RepositoriesViewModel(
     @InjectedParam
     private val projectIdentifier: ProjectIdentifier,
-    private val getReposByProjectIdUseCase: GetReposByProjectIdUseCase,
-    private val cloneRepositoryUseCase: CloneRepositoryUseCase,
-    private val linkExistingRepositoryUseCase: LinkExistingRepositoryUseCase,
+    private val fetchBranchesUseCase: FetchBranchesUseCase,
     private val getDownloadingReposUseCase: GetDownloadingReposUseCase,
-    private val repositoryDownloadTracker: RepositoryDownloadTracker,
-    private val directoryPicker: DirectoryPicker
+    private val cloneRepositoryUseCase: CloneRepositoryUseCase,
+    private val stopDownloadingRepoUseCase: StopDownloadingRepoUseCase,
+    private val linkExistingRepositoryUseCase: LinkExistingRepositoryUseCase,
+    private val directoryPicker: DirectoryPicker,
+    private val gitReposRepository: GitReposRepository
 ) : ViewModel() {
 
     private val _projectGitRepos = MutableStateFlow<List<GitRepo>>(emptyList())
@@ -66,18 +69,25 @@ class RepositoriesViewModel(
 
 
     init {
+        // Fetch repositories for the project initially to ensure branches are fetched
         viewModelScope.launch {
-            getReposByProjectIdUseCase.invoke(projectIdentifier.id).collect {
-                _projectGitRepos.value = it
-                // Initialize filtered repos with all repos
-                updateFilteredRepos(it, _searchText.value)
+            fetchBranchesUseCase.fetchBranchesForProject(projectIdentifier.id.toString())
+        }
+
+        // Subscribe to the flow of repositories from the repository
+        viewModelScope.launch {
+            gitReposRepository.getReposByProjectId(projectIdentifier.id).collect { repos ->
+                _projectGitRepos.value = repos
+                // Update filtered repos when repositories change
+                updateFilteredRepos(repos, _searchText.value)
             }
         }
+
+        // Monitor downloading repositories
         viewModelScope.launch(Dispatchers.Default) {
-            getDownloadingReposUseCase.invoke().collect {
-                // Update the cloning state based on the current downloading repositories
-                _isCloning.value = it.isNotEmpty()
-                _cloningRepoId.value = it.toList()
+            getDownloadingReposUseCase().collect { downloadingRepoIds ->
+                _isCloning.value = downloadingRepoIds.isNotEmpty()
+                _cloningRepoId.value = downloadingRepoIds.toList()
             }
         }
     }
@@ -164,7 +174,7 @@ class RepositoriesViewModel(
                     // Handle any unexpected exceptions
                     println("Error cloning repository: ${e.message}")
                     // Stop tracking this repository as being downloaded if there's an error
-                    repositoryDownloadTracker.stopDownloading(repo.id)
+                    stopDownloadingRepoUseCase(repo.id)
                 } finally {
                     // Clear the dialog state
                     _showCustomNameDialog.value = null

@@ -1,9 +1,10 @@
 import kotlin.Boolean;
+import kotlin.Long;
 
 
 
 storeProject:
-INSERT OR REPLACE INTO Projects(id, name, projectUrl, isAzureDevopsServer, personalAccessToken, projectProcessType) VALUES (?,?, ?, ?, ?, ?);
+INSERT OR REPLACE INTO Projects(id, name, projectUrl, isAzureDevopsServer, personalAccessToken, projectProcessType, patExpirationDate) VALUES (?,?, ?, ?, ?, ?, ?);
 
 getAllProjects:
 SELECT * FROM Projects;
@@ -19,6 +20,9 @@ DELETE FROM Projects WHERE id = ?;
 
 updatePat:
 UPDATE Projects SET personalAccessToken = ? WHERE name = ?;
+
+updatePatExpiration:
+UPDATE Projects SET patExpirationDate = ? WHERE name = ?;
 
 checkIfProjectExistsByURL:
 SELECT EXISTS(SELECT 1 FROM Projects WHERE projectUrl = ?) AS result;

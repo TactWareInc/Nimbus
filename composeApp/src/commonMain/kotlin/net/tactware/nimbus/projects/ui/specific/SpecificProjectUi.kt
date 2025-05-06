@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -20,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import net.tactware.nimbus.projects.dal.entities.ProjectIdentifier
 import net.tactware.nimbus.projects.ui.specific.WorkItemPage
+import net.tactware.nimbus.projects.ui.specific.ArtifactoryUi
 
 /**
  * Main UI component for a specific project.
@@ -29,7 +31,7 @@ import net.tactware.nimbus.projects.ui.specific.WorkItemPage
 fun SpecificProjectUi(projectIdentifier: ProjectIdentifier) {
     // State for tab selection
     var selectedTabIndex by remember { mutableStateOf(0) }
-    val tabs = listOf("Repositories", "Work Items")
+    val tabs = listOf("Repositories", "Work Items", "Artifactory")
 
     // State for showing the work item page
     var showWorkItemPage by remember { mutableStateOf(false) }
@@ -51,10 +53,10 @@ fun SpecificProjectUi(projectIdentifier: ProjectIdentifier) {
                             onClick = { selectedTabIndex = index },
                             text = { Text(title) },
                             icon = {
-                                if (index == 0) {
-                                    Icon(Icons.Default.Build, contentDescription = "Repositories")
-                                } else {
-                                    Icon(Icons.Default.PlayArrow, contentDescription = "Work Items")
+                                when (index) {
+                                    0 -> Icon(Icons.Default.Build, contentDescription = "Repositories")
+                                    1 -> Icon(Icons.Default.PlayArrow, contentDescription = "Work Items")
+                                    2 -> Icon(Icons.Default.CloudDownload, contentDescription = "Artifactory")
                                 }
                             }
                         )
@@ -68,6 +70,7 @@ fun SpecificProjectUi(projectIdentifier: ProjectIdentifier) {
                         projectIdentifier = projectIdentifier,
                         onNavigateToCreateWorkItem = { showWorkItemPage = true }
                     )
+                    2 -> ArtifactoryUi(projectIdentifier)
                 }
             }
         }

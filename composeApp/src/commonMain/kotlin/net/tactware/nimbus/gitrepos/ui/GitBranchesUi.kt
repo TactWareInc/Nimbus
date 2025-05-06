@@ -32,8 +32,13 @@ import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -69,122 +74,304 @@ fun GitBranchesUi() {
     val selectedRepo by viewModel.selectedRepo.collectAsState()
     val branches by viewModel.branches.collectAsState()
 
+    // State for showing/hiding the create branch dialog
+    var showCreateBranchDialog by remember { mutableStateOf(false) }
+
     // Fetch branches for all projects in the database
     // This allows viewing branches across all projects, not just a single one
     LaunchedEffect(Unit) {
         viewModel.fetchBranchesForAllProjects()
     }
 
-    Column(
-        modifier = Modifier.fillMaxSize().padding(MaterialTheme.spacing.medium)
-    ) {
-        Text(
-            "Git Branch Management (All Projects)",
-            style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.padding(bottom = MaterialTheme.spacing.medium)
-        )
-
-        when (uiState) {
-            is GitBranchesViewModel.UiState.Loading -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { showCreateBranchDialog = true },
+                containerColor = MaterialTheme.colorScheme.tertiary
+            ) {
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = "Create Branch",
+                    tint = MaterialTheme.colorScheme.onTertiary
+                )
             }
-            is GitBranchesViewModel.UiState.Success -> {
-                val repos = (uiState as GitBranchesViewModel.UiState.Success).repos
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier.fillMaxSize().padding(MaterialTheme.spacing.medium).padding(paddingValues)
+        ) {
+            Text(
+                "Git Branch Management (All Projects)",
+                style = MaterialTheme.typography.headlineMedium,
+                modifier = Modifier.padding(bottom = MaterialTheme.spacing.medium)
+            )
 
-                Row(
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    // Repository list
-                    Card(
-                        modifier = Modifier.width(250.dp).fillMaxSize().padding(end = MaterialTheme.spacing.medium)
+            when (uiState) {
+                is GitBranchesViewModel.UiState.Loading -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Column(
-                            modifier = Modifier.fillMaxSize().padding(MaterialTheme.spacing.small)
-                        ) {
-                            Text(
-                                "Repositories",
-                                style = MaterialTheme.typography.titleMedium,
-                                modifier = Modifier.padding(bottom = MaterialTheme.spacing.small)
-                            )
-
-                            Divider()
-
-                            LazyColumn(
-                                modifier = Modifier.fillMaxSize().padding(top = MaterialTheme.spacing.small),
-                                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
-                            ) {
-                                items(repos) { repo ->
-                                    RepoItem(
-                                        repo = repo,
-                                        isSelected = repo.id == selectedRepo?.id,
-                                        onClick = { viewModel.selectRepository(repo) }
-                                    )
-                                }
-                            }
-                        }
+                        CircularProgressIndicator()
                     }
+                }
+                is GitBranchesViewModel.UiState.Success -> {
+                    val repos = (uiState as GitBranchesViewModel.UiState.Success).repos
 
-                    // Branch list
-                    Card(
-                        modifier = Modifier.weight(1f).fillMaxSize()
+                    Row(
+                        modifier = Modifier.fillMaxSize()
                     ) {
-                        Column(
-                            modifier = Modifier.fillMaxSize().padding(MaterialTheme.spacing.small)
+                        // Repository list
+                        Card(
+                            modifier = Modifier.width(250.dp).fillMaxSize().padding(end = MaterialTheme.spacing.medium)
                         ) {
-                            Text(
-                                "Branches for ${selectedRepo?.name ?: "Selected Repository"}",
-                                style = MaterialTheme.typography.titleMedium,
-                                modifier = Modifier.padding(bottom = MaterialTheme.spacing.small)
-                            )
+                            Column(
+                                modifier = Modifier.fillMaxSize().padding(MaterialTheme.spacing.small)
+                            ) {
+                                Text(
+                                    "Repositories",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    modifier = Modifier.padding(bottom = MaterialTheme.spacing.small)
+                                )
 
-                            Divider()
+                                Divider()
 
-                            if (branches.isEmpty()) {
-                                Box(
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text("No branches found for this repository")
-                                }
-                            } else {
                                 LazyColumn(
                                     modifier = Modifier.fillMaxSize().padding(top = MaterialTheme.spacing.small),
                                     verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
                                 ) {
-                                    items(branches) { branch ->
-                                        BranchItem(
-                                            branch = branch,
-                                            onClick = { viewModel.switchBranch(branch.name) }
+                                    items(repos) { repo ->
+                                        RepoItem(
+                                            repo = repo,
+                                            isSelected = repo.id == selectedRepo?.id,
+                                            onClick = { viewModel.selectRepository(repo) }
                                         )
                                     }
                                 }
                             }
                         }
+
+                        // Branch list and creation
+                        Column(
+                            modifier = Modifier.weight(1f).fillMaxSize()
+                        ) {
+                            // Branch list
+                            Card(
+                                modifier = Modifier.weight(1f).fillMaxWidth()
+                            ) {
+                                Column(
+                                    modifier = Modifier.fillMaxSize().padding(MaterialTheme.spacing.small)
+                                ) {
+                                    Text(
+                                        "Branches for ${selectedRepo?.name ?: "Selected Repository"}",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        modifier = Modifier.padding(bottom = MaterialTheme.spacing.small)
+                                    )
+
+                                    Divider()
+
+                                    if (branches.isEmpty()) {
+                                        Box(
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text("No branches found for this repository")
+                                        }
+                                    } else {
+                                        LazyColumn(
+                                            modifier = Modifier.fillMaxSize().padding(top = MaterialTheme.spacing.small),
+                                            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+                                        ) {
+                                            items(branches) { branch ->
+                                                BranchItem(
+                                                    branch = branch,
+                                                    onClick = { viewModel.switchBranch(branch.name) }
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                        }
+                    }
+                }
+                is GitBranchesViewModel.UiState.Empty -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("No repositories found")
+                    }
+                }
+                is GitBranchesViewModel.UiState.Error -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text((uiState as GitBranchesViewModel.UiState.Error).message)
                     }
                 }
             }
-            is GitBranchesViewModel.UiState.Empty -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("No repositories found")
-                }
-            }
-            is GitBranchesViewModel.UiState.Error -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text((uiState as GitBranchesViewModel.UiState.Error).message)
-                }
-            }
         }
+    }
+
+    // Branch creation dialog
+    if (showCreateBranchDialog) {
+        val branchName by viewModel.branchName.collectAsState()
+        val selectedReposForBranch by viewModel.selectedReposForBranch.collectAsState()
+        val isCreatingBranch by viewModel.isCreatingBranch.collectAsState()
+        val repos = if (uiState is GitBranchesViewModel.UiState.Success) {
+            (uiState as GitBranchesViewModel.UiState.Success).repos
+        } else {
+            emptyList()
+        }
+
+        AlertDialog(
+            onDismissRequest = { 
+                if (!isCreatingBranch) {
+                    showCreateBranchDialog = false
+                }
+            },
+            title = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = "Create Branch",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        "Create Branch",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+                ) {
+                    OutlinedTextField(
+                        value = branchName,
+                        onValueChange = { viewModel.updateBranchName(it) },
+                        label = { Text("Branch Name") },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isCreatingBranch
+                    )
+
+                    Text(
+                        "Select Repositories:",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+
+                    if (repos.isEmpty()) {
+                        Text(
+                            "No repositories available. Please clone repositories first.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    } else {
+                        repos.forEach { repo ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Checkbox(
+                                    checked = selectedReposForBranch.contains(repo),
+                                    onCheckedChange = { checked ->
+                                        if (checked) {
+                                            viewModel.selectRepoForBranch(repo)
+                                        } else {
+                                            viewModel.unselectRepoForBranch(repo)
+                                        }
+                                    },
+                                    enabled = !isCreatingBranch
+                                )
+                                Text(
+                                    repo.name,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+
+                    // Checkbox options
+                    val pushToRemote by viewModel.pushToRemote.collectAsState()
+                    val autoCheckout by viewModel.autoCheckout.collectAsState()
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Checkbox(
+                            checked = pushToRemote,
+                            onCheckedChange = { viewModel.updatePushToRemote(it) },
+                            enabled = !isCreatingBranch
+                        )
+                        Text(
+                            "Let origin/remote know about the new branch",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Checkbox(
+                            checked = autoCheckout,
+                            onCheckedChange = { viewModel.updateAutoCheckout(it) },
+                            enabled = !isCreatingBranch
+                        )
+                        Text(
+                            "Auto checkout the new branch on all repository selected",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+
+                    if (isCreatingBranch) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Creating branch...")
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { 
+                        viewModel.createBranch()
+                        // Dialog will be dismissed automatically when branch creation is complete
+                        // because isCreatingBranch will become false
+                    },
+                    enabled = branchName.isNotBlank() && selectedReposForBranch.isNotEmpty() && !isCreatingBranch
+                ) {
+                    Text("Create")
+                }
+            },
+            dismissButton = {
+                Button(
+                    onClick = { showCreateBranchDialog = false },
+                    enabled = !isCreatingBranch
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 

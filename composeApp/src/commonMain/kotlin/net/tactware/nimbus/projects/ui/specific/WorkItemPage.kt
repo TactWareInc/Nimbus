@@ -279,13 +279,28 @@ fun WorkItemPage(
                         )
                     }
 
-                    OutlinedTextField(
-                        value = branchName,
-                        onValueChange = { viewModel.updateBranchName(it) },
-                        label = { Text("Branch Name") },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = workItemCreated && !isCreatingBranch
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        OutlinedTextField(
+                            value = branchName,
+                            onValueChange = { viewModel.updateBranchName(it) },
+                            label = { Text("Branch Name") },
+                            modifier = Modifier.weight(1f),
+                            enabled = !isCreatingBranch
+                        )
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        Button(
+                            onClick = { viewModel.generateBranchNameFromTitle() },
+                            enabled = !isCreatingBranch && title.isNotBlank(),
+                            modifier = Modifier.padding(top = 8.dp)
+                        ) {
+                            Text("Generate from Title")
+                        }
+                    }
 
                     Text(
                         "Select Repositories:",
@@ -313,7 +328,7 @@ fun WorkItemPage(
                                             viewModel.unselectRepo(repo)
                                         }
                                     },
-                                    enabled = workItemCreated && !isCreatingBranch
+                                    enabled = !isCreatingBranch
                                 )
                                 Text(
                                     repo.name,
@@ -326,7 +341,7 @@ fun WorkItemPage(
                     Button(
                         onClick = { viewModel.createBranch() },
                         modifier = Modifier.align(Alignment.End),
-                        enabled = workItemCreated && branchName.isNotBlank() && selectedRepos.isNotEmpty() && !isCreatingBranch
+                        enabled = branchName.isNotBlank() && selectedRepos.isNotEmpty() && !isCreatingBranch
                     ) {
                         if (isCreatingBranch) {
                             CircularProgressIndicator(

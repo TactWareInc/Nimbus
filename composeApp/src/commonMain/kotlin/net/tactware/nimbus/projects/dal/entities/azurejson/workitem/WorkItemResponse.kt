@@ -22,5 +22,9 @@ data class WorkItemFields(
     @SerialName("System.State")
     val state: String,
     @SerialName("System.AssignedTo")
-    val assignedTo: String? = null
+    val assignedTo: String? = null,
+    @SerialName("System.Description")
+    val description: String? = null,
+    @SerialName("System.WorkItemType")
+    val workItemType: String? = null
 )

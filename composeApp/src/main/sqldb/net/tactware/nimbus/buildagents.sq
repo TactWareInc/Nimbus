@@ -2,8 +2,8 @@ import kotlin.Boolean;
 
 -- Store or update a build agent
 storeBuildAgent:
-INSERT OR REPLACE INTO BuildAgents(id, name, status, enabled, capabilities, version, os_description, project_id, last_updated)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT OR REPLACE INTO BuildAgents(id, name, status, enabled, capabilities, version, os_description, project_id, last_updated, poolName, organization)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- Get all build agents for a project
 getBuildAgentsForProject:

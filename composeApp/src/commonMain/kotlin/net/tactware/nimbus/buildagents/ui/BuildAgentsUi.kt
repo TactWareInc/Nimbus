@@ -142,10 +142,28 @@ fun BuildAgentCard(agent: BuildAgent) {
                 Text(
                     text = agent.description ?: "",
                     style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 2,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
+
+                // Display pool name and organization if available
+                if (agent.poolName != null || agent.organization != null) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = buildString {
+                            agent.poolName?.let { append("Pool: $it") }
+                            if (agent.poolName != null && agent.organization != null) {
+                                append(" | ")
+                            }
+                            agent.organization?.let { append("Org: $it") }
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.width(MaterialTheme.spacing.small))
@@ -264,6 +282,24 @@ fun AgentListItem(agent: BuildAgent) {
                         overflow = TextOverflow.Ellipsis
                     )
                 }
+
+                // Display pool name and organization if available
+                if (agent.poolName != null || agent.organization != null) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = buildString {
+                            agent.poolName?.let { append("Pool: $it") }
+                            if (agent.poolName != null && agent.organization != null) {
+                                append(" | ")
+                            }
+                            agent.organization?.let { append("Org: $it") }
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
 
             // Status indicator
@@ -300,5 +336,7 @@ data class BuildAgent(
     val id: String,
     val name: String,
     val description: String? = null,
-    val isOnline: Boolean = false
+    val isOnline: Boolean = false,
+    val poolName: String? = null,
+    val organization: String? = null
 )

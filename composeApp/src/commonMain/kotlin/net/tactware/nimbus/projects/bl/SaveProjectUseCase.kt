@@ -11,12 +11,13 @@ class SaveProjectUseCase(private val projectsRepository: ProjectsRepository) {
 
     suspend fun invoke(
         projectName: String,
-        projectUrl : String,
-        isDevOpsServer : DevOpsServerOrService,
+        projectUrl: String,
+        isDevOpsServer: DevOpsServerOrService,
         personalAccessToken: String,
-        id : String? = null
-    ) {
-        if(!projectsRepository.doesProjectUrlExist(projectUrl)) {
+        patExpirationDate: Long? = null,
+        id: String? = null
+    ): UseCaseResult {
+        return if (!projectsRepository.doesProjectUrlExist(projectUrl)) {
             projectsRepository.storeProject(
                 Project(
                     id = id ?: Uuid.random().toString(),
@@ -24,8 +25,23 @@ class SaveProjectUseCase(private val projectsRepository: ProjectsRepository) {
                     projectUrl = projectUrl,
                     isServerOrService = isDevOpsServer,
                     personalAccessToken = personalAccessToken,
+                    patExpirationDate = patExpirationDate
                 )
             )
+            if (projectsRepository.doesProjectUrlExist(projectUrl)) {
+                UseCaseResult.SUCCESS
+            } else {
+                UseCaseResult.FAILURE
+            }
+
+        } else {
+            UseCaseResult.ALREADY_EXISTS
         }
+    }
+
+    enum class UseCaseResult {
+        SUCCESS,
+        FAILURE,
+        ALREADY_EXISTS
     }
 }

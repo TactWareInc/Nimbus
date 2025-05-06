@@ -42,7 +42,8 @@ class ProjectsRepository(provider: IDatabaseProvider<NimbusDb>) {
             projectUrl = project.projectUrl,
             isAzureDevopsServer = project.isServerOrService == DevOpsServerOrService.SERVER,
             personalAccessToken = project.personalAccessToken,
-            projectProcessType = "AGILE"
+            projectProcessType = "AGILE",
+            patExpirationDate = project.patExpirationDate
         )
     }
 
